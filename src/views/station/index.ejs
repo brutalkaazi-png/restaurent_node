@@ -7,34 +7,60 @@ function statusLabel(status) {
 }
 
 const categories = [...new Set(activeOrders.map((order) => order.item && order.item.category ? order.item.category.category_name : 'Uncategorized'))].sort();
+const pendingCount = activeOrders.filter(o => o.status === 'order_food' || o.status === 'order_drink' || o.status === 'confirmed').length;
+const cookingCount = activeOrders.filter(o => o.status === 'preparing').length;
 %>
 
-<section class="card station-hero">
-  <div class="station-toolbar">
+<section class="card station-hero" style="margin-bottom:16px;">
+  <div class="station-toolbar" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
     <div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-        <span class="badge" style="background:#334155;color:#f8fafc;font-size:11px;">● LIVE KDS PASS</span>
-        <span style="font-size:12px;color:#94a3b8;"><%= station === 'bar' ? 'Drinks Station' : 'Kitchen Station' %></span>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <span class="badge" style="background:#334155;color:#38bdf8;font-size:11px;font-weight:700;">● LIVE DISPATCH PASS</span>
+        <!-- STATION SWITCHER TABS -->
+        <div style="display:inline-flex;background:#0f172a;border-radius:8px;padding:3px;border:1px solid #334155;">
+          <a href="/kitchen-admin/kitchen" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;<%= station === 'kitchen' ? 'background:var(--brand);color:#fff;' : 'color:#94a3b8;' %>">
+            🍳 Kitchen Line
+          </a>
+          <a href="/kitchen-admin/bar" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;<%= station === 'bar' ? 'background:var(--brand);color:#fff;' : 'color:#94a3b8;' %>">
+            🍸 Bar Station
+          </a>
+        </div>
       </div>
-      <h2><%= station === 'bar' ? 'Bar' : 'Kitchen' %> ticket board</h2>
-      <p>Incoming tickets update live. Status changes are automatically synchronized with counter cashier.</p>
+      <h2 style="margin:0 0 4px;color:#f8fafc;"><%= station === 'bar' ? 'Bar & Drinks Station' : 'Hot Food Kitchen Station' %></h2>
+      <p style="margin:0;color:#94a3b8;font-size:13px;">Synchronized with counter cashier and guest QR tables. Real-time ticket dispatch.</p>
     </div>
-    <div style="display:flex;align-items:center;gap:12px;">
-      <label for="station-category" style="margin:0;color:#cbd5e1;font-size:12px;font-weight:600;">Filter course:
-        <select id="station-category" aria-label="Filter kitchen tickets by category" style="margin:4px 0 0;display:block;">
-          <option value="all">All categories</option>
+
+    <!-- METRICS & TOOLBAR -->
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div style="display:flex;gap:8px;">
+        <span class="badge" style="background:#1e293b;border:1px solid #334155;color:#f8fafc;padding:6px 10px;font-size:12px;">
+          ⏳ <strong><%= pendingCount %></strong> Pending
+        </span>
+        <span class="badge" style="background:#1e293b;border:1px solid #334155;color:#38bdf8;padding:6px 10px;font-size:12px;">
+          🔥 <strong><%= cookingCount %></strong> Cooking
+        </span>
+      </div>
+
+      <label for="station-category" style="margin:0;color:#cbd5e1;font-size:12px;font-weight:600;">
+        Course:
+        <select id="station-category" aria-label="Filter kitchen tickets by category" style="margin:2px 0 0;padding:5px 8px;background:#1e293b;color:#f8fafc;border:1px solid #334155;border-radius:6px;font-size:12px;">
+          <option value="all">All categories (<%= activeOrders.length %>)</option>
           <% categories.forEach((category) => { %><option value="<%= category %>"><%= category %></option><% }) %>
         </select>
       </label>
+
+      <button type="button" id="toggle-sound-btn" class="btn btn-secondary" style="padding:6px 10px;font-size:12px;border:1px solid #334155;background:#1e293b;color:#f8fafc;">
+        🔔 Audio Alert: ON
+      </button>
     </div>
   </div>
 </section>
 
 <% if (!activeOrders.length) { %>
   <section class="card" style="text-align:center;padding:56px 20px;" role="status">
-    <div style="font-size:36px;margin-bottom:12px;">👨‍🍳</div>
-    <h3 style="margin:0 0 6px;">All tickets clear</h3>
-    <p style="color:var(--muted);margin:0;">No orders are currently waiting. New guest orders will appear automatically.</p>
+    <div style="font-size:40px;margin-bottom:12px;"><%= station === 'bar' ? '🍹' : '👨‍🍳' %></div>
+    <h3 style="margin:0 0 6px;">All tickets clear on <%= station === 'bar' ? 'Bar Station' : 'Kitchen Station' %></h3>
+    <p style="color:var(--muted);margin:0;">No orders are currently waiting. New guest orders will appear automatically with an alert.</p>
   </section>
 <% } else { %>
   <section class="ticket-grid" aria-label="Active kitchen tickets">
@@ -45,53 +71,67 @@ const categories = [...new Set(activeOrders.map((order) => order.item && order.i
       const nextLabel = order.status === 'preparing' ? '✓ Mark ready' : '▶ Start cooking';
       const toppings = Array.isArray(order.toppings) ? order.toppings.map((topping) => topping.name || topping).join(', ') : '';
     %>
-      <article class="ticket" data-category="<%= category %>" data-created-at="<%= new Date(order.created_at).toISOString() %>">
-        <div class="ticket-head">
+      <article class="ticket" data-category="<%= category %>" data-created-at="<%= new Date(order.created_at).toISOString() %>" style="border-radius:12px;overflow:hidden;">
+        <div class="ticket-head" style="padding:12px 14px;">
           <div>
-            <h3>Table <%= order.table ? order.table.table_name : 'Unknown' %></h3>
-            <div class="ticket-meta">Ticket #<%= order.id %> · <span style="font-weight:700;color:#ffffff;"><%= statusLabel(order.status) %></span></div>
+            <h3 style="font-size:18px;margin:0 0 2px;">Table <%= order.table ? order.table.table_name : 'Walk-In' %></h3>
+            <div class="ticket-meta" style="font-size:12px;">Ticket #<%= order.id %> · <span style="font-weight:700;color:#ffffff;"><%= statusLabel(order.status) %></span></div>
           </div>
-          <span class="elapsed" data-elapsed>0m</span>
+          <span class="elapsed" data-elapsed style="font-weight:700;padding:3px 8px;border-radius:6px;font-size:12.5px;">0m</span>
         </div>
-        <div class="ticket-lines">
+        <div class="ticket-lines" style="padding:14px;">
           <div class="ticket-line">
-            <strong><%= order.item ? order.item.item_name : 'Item #' + order.item_id %></strong>
-            <span class="badge" style="background:#334155;color:#ffffff;font-size:13px;font-weight:800;">x<%= order.quantity %></span>
+            <strong style="font-size:15px;"><%= order.item ? order.item.item_name : 'Item #' + order.item_id %></strong>
+            <span class="badge" style="background:#334155;color:#ffffff;font-size:13px;font-weight:800;padding:3px 8px;">x<%= order.quantity %></span>
           </div>
-          <% if (order.variant) { %><div class="ticket-note">Option: <strong><%= order.variant.name %></strong></div><% } %>
-          <% if (toppings) { %><div class="ticket-note">Toppings: <%= toppings %></div><% } %>
-          <% if (order.remarks) { %><div class="ticket-note" style="color:#fdba74;font-weight:600;">Note: "<%= order.remarks %>"</div><% } %>
+          <% if (order.variant) { %><div class="ticket-note" style="margin-top:4px;">Option: <strong><%= order.variant.name %></strong></div><% } %>
+          <% if (toppings) { %><div class="ticket-note" style="margin-top:2px;">Toppings: <%= toppings %></div><% } %>
+          <% if (order.remarks) { %><div class="ticket-note" style="color:#fdba74;font-weight:700;margin-top:4px;background:rgba(251,146,60,0.15);padding:4px 6px;border-radius:4px;">Note: "<%= order.remarks %>"</div><% } %>
         </div>
-        <div class="ticket-foot">
-          <div class="ticket-actions">
-            <% if (canAdvance) { %><button type="button" class="order-action-btn" data-id="<%= order.id %>" data-action="<%= nextAction %>"><%= nextLabel %></button><% } %>
-            <% if (order.status !== 'cancelled') { %><button type="button" class="order-action-btn secondary" data-id="<%= order.id %>" data-action="cancelled">Cancel</button><% } %>
+        <div class="ticket-foot" style="padding:10px 14px;background:rgba(15,23,42,0.4);display:flex;justify-content:space-between;align-items:center;">
+          <div class="ticket-actions" style="display:flex;gap:6px;">
+            <% if (canAdvance) { %>
+              <button type="button" class="order-action-btn" data-id="<%= order.id %>" data-action="<%= nextAction %>" style="font-weight:700;padding:8px 14px;">
+                <%= nextLabel %>
+              </button>
+            <% } %>
+            <% if (order.status !== 'cancelled') { %>
+              <button type="button" class="order-action-btn secondary" data-id="<%= order.id %>" data-action="cancelled" style="padding:8px 10px;">
+                Cancel
+              </button>
+            <% } %>
           </div>
-          <% if (order.item) { %><button type="button" class="sold-out" data-item-id="<%= order.item.id %>" aria-label="Toggle sold out for <%= order.item.item_name %>"><%= order.item.sold_out ? 'Available' : '86 Item' %></button><% } %>
+          <% if (order.item) { %>
+            <button type="button" class="sold-out" data-item-id="<%= order.item.id %>" aria-label="Toggle sold out for <%= order.item.item_name %>" style="padding:6px 8px;font-size:11px;">
+              <%= order.item.sold_out ? 'Available' : '86 Item' %>
+            </button>
+          <% } %>
         </div>
       </article>
     <% }) %>
   </section>
 <% } %>
 
-<section class="card">
+<section class="card" style="margin-top:20px;">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-    <h3 style="margin:0;">Finished tickets today</h3>
+    <h3 style="margin:0;font-size:16px;">Finished tickets today</h3>
     <span class="badge" style="font-size:12px;"><%= finishedOrdersToday.count %> completed</span>
   </div>
   <% if (!finishedOrdersToday.rows.length) { %>
     <p style="color:var(--muted);text-align:center;padding:16px 0;">No finished tickets yet today.</p>
   <% } else { %>
-    <% finishedOrdersToday.rows.forEach((row) => { %>
-      <div class="item-row">
-        <div>
-          <strong><%= row.table ? row.table.table_name : 'Unknown table' %></strong>
-          <span style="color:var(--muted);margin-left:8px;"><%= row.item ? row.item.item_name : 'Item #' + row.item_id %></span>
-          <span class="badge" style="font-size:11px;margin-left:6px;">x<%= row.quantity %></span>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px;">
+      <% finishedOrdersToday.rows.forEach((row) => { %>
+        <div class="item-row" style="background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px 12px;">
+          <div>
+            <strong style="color:var(--ink);"><%= row.table ? row.table.table_name : 'Unknown' %></strong>
+            <span style="color:var(--muted);margin-left:6px;font-size:13px;"><%= row.item ? row.item.item_name : 'Item #' + row.item_id %></span>
+            <span class="badge" style="font-size:11px;margin-left:4px;">x<%= row.quantity %></span>
+          </div>
+          <span class="badge status-available" style="font-size:11px;"><%= statusLabel(row.status) %></span>
         </div>
-        <span class="badge status-available"><%= statusLabel(row.status) %></span>
-      </div>
-    <% }) %>
+      <% }) %>
+    </div>
   <% } %>
 </section>
 
@@ -101,6 +141,34 @@ const categories = [...new Set(activeOrders.map((order) => order.item && order.i
   const soldOutBaseUrl = '<%= station === "bar" ? "/kitchen-admin" : "/kitchen-admin/kitchen" %>/toggle-sold-out';
   const categoryFilter = document.getElementById('station-category');
   const tickets = [...document.querySelectorAll('.ticket')];
+
+  // Web Audio chime for KDS ticket notification
+  let audioEnabled = true;
+  const audioBtn = document.getElementById('toggle-sound-btn');
+  if (audioBtn) {
+    audioBtn.addEventListener('click', () => {
+      audioEnabled = !audioEnabled;
+      audioBtn.textContent = audioEnabled ? '🔔 Audio Alert: ON' : '🔕 Audio Alert: OFF';
+    });
+  }
+
+  function playKdsChime() {
+    if (!audioEnabled) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+    } catch (e) {}
+  }
 
   function updateElapsed(ticket) {
     const createdAt = Date.parse(ticket.dataset.createdAt);
@@ -136,5 +204,9 @@ const categories = [...new Set(activeOrders.map((order) => order.item && order.i
 
   const socket = io();
   socket.emit('join-restaurant', <%= restaurantId %>);
-  socket.on('restaurant-update', () => location.reload());
+  socket.on('restaurant-update', () => {
+    playKdsChime();
+    location.reload();
+  });
 </script>
+

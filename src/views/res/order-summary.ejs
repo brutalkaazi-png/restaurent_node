@@ -1,34 +1,211 @@
-<div class="card">
-  <h2>Order summary</h2>
-  <% if (subscriptionName) { %><p>Plan: <%= subscriptionName %></p><% } %>
-  <form method="GET" action="/order-summary">
-    <label>Period</label>
-    <select name="date_period">
-      <option value="">All time</option>
-      <option value="daily" <%= datePeriod === 'daily' ? 'selected' : '' %>>Daily</option>
-      <option value="monthly" <%= datePeriod === 'monthly' ? 'selected' : '' %>>Monthly</option>
-      <option value="yearly" <%= datePeriod === 'yearly' ? 'selected' : '' %>>Yearly</option>
-      <option value="custom" <%= datePeriod === 'custom' ? 'selected' : '' %>>Custom (from|to)</option>
-    </select>
-    <label>Date</label>
-    <input type="text" name="selected_date" value="<%= dateRange %>">
-    <button class="btn" type="submit">Apply</button>
+<%
+const salesVal = parseFloat(totalSales) || 0;
+const ordersVal = parseInt(totalCount, 10) || 0;
+const aovVal = ordersVal > 0 ? (salesVal / ordersVal) : 0;
+const tableSalesVal = parseFloat(totalTableqrSales) || 0;
+const onlineSalesVal = parseFloat(totalSingleqrSales) || 0;
+const tableShare = salesVal > 0 ? Math.round((tableSalesVal / salesVal) * 100) : 0;
+const onlineShare = salesVal > 0 ? Math.round((onlineSalesVal / salesVal) * 100) : 0;
+%>
+
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Financial Audit & Reconciliation</span>
+      <span style="font-size:12px;color:var(--muted);"><%= datePeriod ? datePeriod.toUpperCase() : 'ALL TIME' %></span>
+    </div>
+    <h2>Shift Register & Daily Z-Report</h2>
+    <p>Audit daily cash drawers, reconcile shift balances, track revenue across table QR vs online channels, and print closing reports.</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button type="button" class="btn" onclick="window.print()" style="display:flex;align-items:center;gap:6px;">
+      <span>🖨️</span> Print Daily Z-Report
+    </button>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="card" style="margin-bottom:20px;padding:16px 20px;">
+  <form method="GET" action="/order-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr)) auto;gap:12px;align-items:end;margin:0;">
+    <div>
+      <label style="margin:0 0 4px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;">Period Filter</label>
+      <select name="date_period" style="margin:0;padding:8px 12px;border-radius:8px;">
+        <option value="">All time</option>
+        <option value="daily" <%= datePeriod === 'daily' ? 'selected' : '' %>>Daily / Today</option>
+        <option value="monthly" <%= datePeriod === 'monthly' ? 'selected' : '' %>>Monthly</option>
+        <option value="yearly" <%= datePeriod === 'yearly' ? 'selected' : '' %>>Yearly</option>
+        <option value="custom" <%= datePeriod === 'custom' ? 'selected' : '' %>>Custom Range (from|to)</option>
+      </select>
+    </div>
+    <div>
+      <label style="margin:0 0 4px;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;">Date / Range</label>
+      <input type="text" name="selected_date" value="<%= dateRange || '' %>" placeholder="YYYY-MM-DD" style="margin:0;padding:8px 12px;border-radius:8px;">
+    </div>
+    <div>
+      <button class="btn" type="submit" style="padding:9px 18px;margin:0;width:100%;">Apply Filter</button>
+    </div>
   </form>
 </div>
 
-<div class="card">
-  <div class="item-row"><strong>Total orders</strong><strong><%= totalCount %></strong></div>
-  <div class="item-row"><strong>Total sales</strong><strong><%= parseFloat(totalSales).toFixed(2) %></strong></div>
+<!-- 4 EXECUTIVE KPI CARDS -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:20px;">
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Gross Sales</span>
+    <div style="font-size:28px;font-weight:800;color:var(--brand);margin:6px 0 2px;">$<%= salesVal.toFixed(2) %></div>
+    <span style="font-size:12px;color:var(--muted);"><%= ordersVal %> total settled checks</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Completed Orders</span>
+    <div style="font-size:28px;font-weight:800;color:var(--ink);margin:6px 0 2px;"><%= ordersVal %></div>
+    <span style="font-size:12px;color:var(--muted);">Dine-in + Online orders</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Average Order Value (AOV)</span>
+    <div style="font-size:28px;font-weight:800;color:#0d9488;margin:6px 0 2px;">$<%= aovVal.toFixed(2) %></div>
+    <span style="font-size:12px;color:var(--muted);">Per customer dining check</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Primary Channel</span>
+    <div style="font-size:28px;font-weight:800;color:#4f46e5;margin:6px 0 2px;"><%= tableShare %>%</div>
+    <span style="font-size:12px;color:var(--muted);">Generated from Table QR tabs</span>
+  </div>
 </div>
 
-<div class="card">
-  <h3>Online orders</h3>
-  <div class="item-row"><span>Count</span><span><%= singleqrCount %></span></div>
-  <div class="item-row"><span>Sales</span><span><%= parseFloat(totalSingleqrSales).toFixed(2) %></span></div>
+<!-- CHANNEL SALES BREAKDOWN & CASH RECONCILIATION -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;align-items:start;margin-bottom:20px;">
+  <!-- CHANNEL BREAKDOWN -->
+  <div class="card" style="margin:0;">
+    <h3 style="margin:0 0 16px;font-size:16px;color:var(--ink);">Sales by Order Channel</h3>
+
+    <!-- TABLE DINE-IN -->
+    <div style="background:#f8fafc;padding:14px 16px;border-radius:10px;border:1px solid var(--line);margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:#fef3c7;color:#b45309;font-weight:700;font-size:13px;">▦</span>
+          <strong style="font-size:15px;color:var(--ink);">Dine-In Table Orders</strong>
+        </div>
+        <span class="badge" style="background:#e0e7ff;color:#3730a3;font-weight:700;"><%= tableShare %>%</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13.5px;color:var(--muted);margin-top:4px;">
+        <span>Orders: <strong><%= tableqrCount %></strong></span>
+        <span>Sales: <strong style="color:var(--ink);">$<%= tableSalesVal.toFixed(2) %></strong></span>
+      </div>
+    </div>
+
+    <!-- ONLINE / PICKUP -->
+    <div style="background:#f8fafc;padding:14px 16px;border-radius:10px;border:1px solid var(--line);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:#ecfdf5;color:#047857;font-weight:700;font-size:13px;">🛍️</span>
+          <strong style="font-size:15px;color:var(--ink);">Online & Pickup Orders</strong>
+        </div>
+        <span class="badge" style="background:#dcfce7;color:#15803d;font-weight:700;"><%= onlineShare %>%</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13.5px;color:var(--muted);margin-top:4px;">
+        <span>Orders: <strong><%= singleqrCount %></strong></span>
+        <span>Sales: <strong style="color:var(--ink);">$<%= onlineSalesVal.toFixed(2) %></strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CASH DRAWER & SHIFT RECONCILIATION -->
+  <div class="card" style="margin:0;border:1.5px solid var(--line);">
+    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:16px;">
+      <h3 style="margin:0;font-size:16px;color:var(--ink);">Drawer Cash Balancing</h3>
+      <span class="badge status-available">● Z-Reconciliation</span>
+    </div>
+
+    <div style="display:grid;gap:12px;margin-bottom:16px;">
+      <div>
+        <label style="margin:0 0 4px;font-size:12.5px;font-weight:600;color:var(--ink);">Opening Cash Float ($)</label>
+        <input type="number" id="opening-float" value="150.00" step="10" style="margin:0;padding:8px 12px;font-weight:700;text-align:right;">
+      </div>
+
+      <div style="background:#f8fafc;padding:12px 14px;border-radius:8px;border:1px solid var(--line);">
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:4px;">
+          <span>Opening Float</span>
+          <span id="disp-opening">$150.00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:4px;">
+          <span>Settled Sales</span>
+          <span>+$<%= salesVal.toFixed(2) %></span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:var(--ink);border-top:1px dashed var(--line);padding-top:6px;">
+          <span>Expected Cash in Drawer:</span>
+          <span id="expected-drawer">$<%= (150 + salesVal).toFixed(2) %></span>
+        </div>
+      </div>
+
+      <div>
+        <label style="margin:0 0 4px;font-size:12.5px;font-weight:600;color:var(--ink);">Actual Cash Counted ($)</label>
+        <input type="number" id="actual-cash" value="<%= (150 + salesVal).toFixed(2) %>" step="1" style="margin:0;padding:8px 12px;font-weight:700;text-align:right;">
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-radius:8px;background:#f0fdf4;border:1px solid #bbf7d0;" id="recon-status-box">
+        <strong style="font-size:13.5px;color:#166534;">Reconciliation Status:</strong>
+        <strong id="over-short-display" style="font-size:15px;color:#166534;">Balanced ($0.00)</strong>
+      </div>
+    </div>
+  </div>
 </div>
 
-<div class="card">
-  <h3>Table orders</h3>
-  <div class="item-row"><span>Count</span><span><%= tableqrCount %></span></div>
-  <div class="item-row"><span>Sales</span><span><%= parseFloat(totalTableqrSales).toFixed(2) %></span></div>
+<!-- PRINTABLE Z-REPORT CONTAINER FOR CLOSING AUDIT -->
+<div id="z-report-print-sheet" style="display:none;">
+  <div style="width:300px;font-family:monospace;padding:10px;margin:0 auto;">
+    <h3 style="text-align:center;margin:4px 0;">DAILY Z-REPORT SUMMARY</h3>
+    <p style="text-align:center;margin:2px 0;font-size:12px;">Period: <%= datePeriod || 'All time' %> &middot; <%= new Date().toLocaleDateString() %></p>
+    <hr style="border:none;border-top:1px dashed #000;margin:8px 0;">
+    <div style="display:flex;justify-content:space-between;"><span>Total Orders:</span><span><%= ordersVal %></span></div>
+    <div style="display:flex;justify-content:space-between;"><span>Total Sales:</span><span>$<%= salesVal.toFixed(2) %></span></div>
+    <div style="display:flex;justify-content:space-between;"><span>Dine-In Table:</span><span>$<%= tableSalesVal.toFixed(2) %> (<%= tableqrCount %>)</span></div>
+    <div style="display:flex;justify-content:space-between;"><span>Online Pickup:</span><span>$<%= onlineSalesVal.toFixed(2) %> (<%= singleqrCount %>)</span></div>
+    <div style="display:flex;justify-content:space-between;"><span>Average Check:</span><span>$<%= aovVal.toFixed(2) %></span></div>
+    <hr style="border:none;border-top:1px dashed #000;margin:8px 0;">
+    <p style="margin:16px 0 4px;font-size:11px;">Manager Sign-off: _______________________</p>
+    <p style="text-align:center;font-size:11px;margin-top:12px;">Shift closed and verified.</p>
+  </div>
 </div>
+
+<script>
+  const netSales = <%= salesVal %>;
+  const floatInput = document.getElementById('opening-float');
+  const actualInput = document.getElementById('actual-cash');
+  const dispOpening = document.getElementById('disp-opening');
+  const expectedDrawer = document.getElementById('expected-drawer');
+  const overShortDisplay = document.getElementById('over-short-display');
+  const reconBox = document.getElementById('recon-status-box');
+
+  function calculateReconciliation() {
+    const floatVal = parseFloat(floatInput.value) || 0;
+    const actualVal = parseFloat(actualInput.value) || 0;
+    const expected = floatVal + netSales;
+    const diff = actualVal - expected;
+
+    dispOpening.textContent = '$' + floatVal.toFixed(2);
+    expectedDrawer.textContent = '$' + expected.toFixed(2);
+
+    if (Math.abs(diff) < 0.01) {
+      overShortDisplay.textContent = 'Balanced ($0.00)';
+      overShortDisplay.style.color = '#166534';
+      reconBox.style.background = '#f0fdf4';
+      reconBox.style.borderColor = '#bbf7d0';
+    } else if (diff > 0) {
+      overShortDisplay.textContent = 'Over by +$' + diff.toFixed(2);
+      overShortDisplay.style.color = '#047857';
+      reconBox.style.background = '#ecfdf5';
+      reconBox.style.borderColor = '#a7f3d0';
+    } else {
+      overShortDisplay.textContent = 'Short by -$' + Math.abs(diff).toFixed(2);
+      overShortDisplay.style.color = '#be123c';
+      reconBox.style.background = '#fff1f2';
+      reconBox.style.borderColor = '#fecdd3';
+    }
+  }
+
+  floatInput.addEventListener('input', calculateReconciliation);
+  actualInput.addEventListener('input', calculateReconciliation);
+</script>
+

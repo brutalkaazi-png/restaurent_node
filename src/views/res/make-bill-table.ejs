@@ -1,59 +1,103 @@
 <%
-let grandTotal = 0;
+let baseSubtotal = 0;
 %>
-<style>
-  .bill-items-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-  .bill-items-table th, .bill-items-table td { padding: 8px 5px; text-align: left; border-bottom: 1px solid #eee; }
-  .bill-items-table th { font-weight: bold; background-color: #f8f9fa; }
-  .col-qty { width: 15%; text-align: center; }
-  .col-rate, .col-total { width: 20%; text-align: right; }
-</style>
+<div class="card" style="max-width:540px;margin:20px auto;box-shadow:var(--shadow-md);border:1px solid var(--line);">
+  <div style="text-align:center;border-bottom:1px dashed var(--line);padding-bottom:16px;margin-bottom:16px;">
+    <span class="badge" style="background:#fef3c7;color:#b45309;font-weight:800;font-size:12px;margin-bottom:8px;">▦ Table <%= table.table_name %></span>
+    <h2 style="margin:0 0 4px;font-size:22px;color:var(--ink);"><%= restaurant.name %></h2>
+    <p style="margin:0;font-size:13px;color:var(--muted);"><%= restaurant.address || 'Thank you for dining with us!' %></p>
+  </div>
 
-<div class="card">
-  <h2><%= restaurant.name %></h2>
-  <p><%= restaurant.address %></p>
-  <p>Table: <%= table.table_name %></p>
+  <h3 style="font-size:15px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);margin:0 0 12px;">Itemized Dining Check</h3>
 
-  <table class="bill-items-table">
+  <table style="width:100%;border-collapse:collapse;margin-bottom:16px;">
     <thead>
-      <tr>
-        <th class="col-qty">Qty</th>
-        <th>Item</th>
-        <th class="col-rate">Rate</th>
-        <th class="col-total">Total</th>
+      <tr style="border-bottom:2px solid var(--line);text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">
+        <th style="padding:6px 0;">Qty</th>
+        <th style="padding:6px 8px;">Dish</th>
+        <th style="padding:6px 8px;text-align:right;">Rate</th>
+        <th style="padding:6px 0;text-align:right;">Total</th>
       </tr>
     </thead>
     <tbody>
       <% orders.forEach(function(order) { %>
-        <% const itemTotal = order.quantity * parseFloat(order.price); grandTotal += itemTotal; %>
-        <tr>
-          <td class="col-qty"><%= order.quantity %></td>
-          <td>
-            <%= order.item ? order.item.item_name : 'N/A' %>
-            <% if (order.variant) { %><br><em>- <%= order.variant.name %></em><% } %>
+        <% const itemTotal = order.quantity * parseFloat(order.price); baseSubtotal += itemTotal; %>
+        <tr style="border-bottom:1px solid var(--line);font-size:13.5px;">
+          <td style="padding:10px 0;font-weight:700;color:var(--ink);"><%= order.quantity %>x</td>
+          <td style="padding:10px 8px;">
+            <strong style="color:var(--ink);display:block;"><%= order.item ? order.item.item_name : 'Item' %></strong>
+            <% if (order.variant) { %><span style="font-size:12px;color:var(--muted);">(<%= order.variant.name %>)</span><% } %>
             <% if (order.toppings && order.toppings.length) { %>
-              <br><small>+ <%= order.toppings.map(t => t.name).join(', ') %></small>
+              <div style="font-size:11.5px;color:var(--muted);">+ <%= order.toppings.map(t => t.name).join(', ') %></div>
             <% } %>
           </td>
-          <td class="col-rate"><%= parseFloat(order.price).toFixed(2) %></td>
-          <td class="col-total"><%= itemTotal.toFixed(2) %></td>
+          <td style="padding:10px 8px;text-align:right;color:var(--muted);">$<%= parseFloat(order.price).toFixed(2) %></td>
+          <td style="padding:10px 0;text-align:right;font-weight:700;color:var(--ink);">$<%= itemTotal.toFixed(2) %></td>
         </tr>
       <% }) %>
     </tbody>
   </table>
 
-  <div class="item-row">
-    <strong>Grand Total</strong>
-    <strong id="total"><%= grandTotal.toFixed(2) %></strong>
+  <!-- TIP / GRATUITY CALCULATOR -->
+  <div style="background:#f8fafc;padding:12px 16px;border-radius:10px;border:1px solid var(--line);margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-size:13px;font-weight:700;color:var(--ink);">Add Server Gratuity / Tip</span>
+      <span id="tip-amount-display" style="font-size:13px;font-weight:700;color:var(--brand);">+$0.00</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;" id="tip-buttons">
+      <button type="button" class="btn btn-secondary tip-btn active-tip" data-pct="0" style="padding:6px 0;font-size:11.5px;font-weight:700;border:1.5px solid var(--brand);background:#fff7ed;color:#9a3412;">None</button>
+      <button type="button" class="btn btn-secondary tip-btn" data-pct="10" style="padding:6px 0;font-size:11.5px;font-weight:600;">10%</button>
+      <button type="button" class="btn btn-secondary tip-btn" data-pct="15" style="padding:6px 0;font-size:11.5px;font-weight:600;">15%</button>
+      <button type="button" class="btn btn-secondary tip-btn" data-pct="18" style="padding:6px 0;font-size:11.5px;font-weight:600;">18%</button>
+      <button type="button" class="btn btn-secondary tip-btn" data-pct="20" style="padding:6px 0;font-size:11.5px;font-weight:600;">20%</button>
+    </div>
   </div>
 
-  <div style="margin-top:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;padding:12px 0;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink);margin-bottom:18px;">
+    <strong style="font-size:17px;color:var(--ink);">Estimated Total Due</strong>
+    <strong id="final-total" style="font-size:24px;color:var(--brand);">$<%= baseSubtotal.toFixed(2) %></strong>
+  </div>
+
+  <div style="display:grid;gap:10px;">
     <form id="request-bill-form" action="/request-bill/<%= table.id %>" method="POST">
-      <button type="submit" class="btn btn-secondary" style="width:100%;">Pay Cash at Counter</button>
+      <button type="submit" class="btn" style="width:100%;padding:12px;font-size:15px;font-weight:700;box-shadow:var(--shadow-brand);">
+        🛎️ Request Floor Server / Settle at Counter
+      </button>
     </form>
 
-    <% if (restaurant.card_payment == 1 && restaurant.public_key && restaurant.secret_key) { %>
-      <button type="button" class="btn" style="width:100%;margin-top:8px;" id="pay-with-card-btn">Pay with Card</button>
-    <% } %>
+    <button type="button" class="btn btn-secondary" onclick="window.print()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;">
+      <span>🖨️</span> Print / Save Receipt Copy
+    </button>
+
+    <a href="/<%= restaurant.slug %>/menu/<%= table.table_slug %>" class="btn btn-secondary" style="width:100%;text-align:center;">
+      ← Return to Digital Menu
+    </a>
   </div>
 </div>
+
+<script>
+  const baseSubtotal = <%= baseSubtotal %>;
+  const tipAmountDisplay = document.getElementById('tip-amount-display');
+  const finalTotalDisplay = document.getElementById('final-total');
+
+  document.querySelectorAll('.tip-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tip-btn').forEach(b => {
+        b.style.border = '1px solid var(--line)';
+        b.style.background = '#fff';
+        b.style.color = 'var(--ink-secondary)';
+      });
+      btn.style.border = '1.5px solid var(--brand)';
+      btn.style.background = '#fff7ed';
+      btn.style.color = '#9a3412';
+
+      const pct = parseFloat(btn.dataset.pct);
+      const tip = (baseSubtotal * pct) / 100;
+      const total = baseSubtotal + tip;
+
+      tipAmountDisplay.textContent = '+$' + tip.toFixed(2);
+      finalTotalDisplay.textContent = '$' + total.toFixed(2);
+    });
+  });
+</script>
+
