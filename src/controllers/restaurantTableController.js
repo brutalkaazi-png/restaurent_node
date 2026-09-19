@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
-const { RestaurantTable } = require('../models');
+const QRCode = require('qrcode');
+const { RestaurantTable, User } = require('../models');
 const { sanitizeString } = require('../utils/stringHelper');
 
 // GET /tables
@@ -8,7 +9,35 @@ async function index(req, res) {
     where: { restaurant_id: req.tenantId, branch_id: req.branchId, is_virtual: false },
     order: [['id', 'DESC']],
   });
-  return res.render('res/table/index', { tables, slug: req.currentUser.slug });
+  const restaurant = req.currentUser;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.headers['x-forwarded-host'] || req.get('host');
+
+  const tablesWithQr = await Promise.all(
+    tables.map(async (table) => {
+      const menuPath = `/${restaurant.slug}/menu/${table.table_slug}`;
+      const menuUrl = `${protocol}://${host}${menuPath}`;
+      let qrDataUrl = '';
+      try {
+        qrDataUrl = await QRCode.toDataURL(menuUrl, {
+          width: 400,
+          margin: 2,
+          color: { dark: '#0f172a', light: '#ffffff' },
+          errorCorrectionLevel: 'H',
+        });
+      } catch (err) {
+        console.error('QR code generation failed:', err);
+      }
+      return {
+        ...table.toJSON(),
+        menuPath,
+        menuUrl,
+        qrDataUrl,
+      };
+    })
+  );
+
+  return res.render('res/table/index', { tables: tablesWithQr, slug: restaurant.slug, restaurant });
 }
 
 // GET /tables/create
@@ -65,10 +94,110 @@ async function destroy(req, res) {
   return res.redirect('/tables');
 }
 
-// NOTE: qr_code() from the original (App\Helpers\QRHelper::generate_table_qr)
-// isn't ported - add a QR-code npm package (e.g. `qrcode`) and wire up
-// /table-qrcode/:id here if you need printable table QR codes back. Each
-// table's ordering URL is simply /{restaurant.slug}/menu/{table.table_slug},
-// so a QR of that URL is all `generate_table_qr` was producing.
+// GET /tables/:id/qr-data
+async function getQrData(req, res) {
+  const table = await RestaurantTable.findOne({
+    where: { id: req.params.id, restaurant_id: req.tenantId, branch_id: req.branchId },
+    include: [{ model: User, as: 'restaurant' }],
+  });
+  if (!table) return res.status(404).json({ success: false, error: 'Table not found' });
 
-module.exports = { index, create, edit, store, destroy };
+  const restaurant = table.restaurant || req.currentUser;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.headers['x-forwarded-host'] || req.get('host');
+  const menuPath = `/${restaurant.slug}/menu/${table.table_slug}`;
+  const menuUrl = `${protocol}://${host}${menuPath}`;
+
+  const qrDataUrl = await QRCode.toDataURL(menuUrl, {
+    width: 400,
+    margin: 2,
+    color: { dark: '#0f172a', light: '#ffffff' },
+    errorCorrectionLevel: 'H',
+  });
+
+  const qrSvg = await QRCode.toString(menuUrl, {
+    type: 'svg',
+    margin: 2,
+    color: { dark: '#0f172a', light: '#ffffff' },
+  });
+
+  return res.json({
+    success: true,
+    table: {
+      id: table.id,
+      name: table.table_name,
+      slug: table.table_slug,
+      status: table.status,
+    },
+    restaurant: {
+      id: restaurant.id,
+      name: restaurant.name,
+      slug: restaurant.slug,
+      logo: restaurant.logo,
+      address: restaurant.address,
+    },
+    menuUrl,
+    menuPath,
+    qrDataUrl,
+    qrSvg,
+  });
+}
+
+// GET /tables/:id/qr-download
+async function downloadQr(req, res) {
+  const table = await RestaurantTable.findOne({
+    where: { id: req.params.id, restaurant_id: req.tenantId, branch_id: req.branchId },
+    include: [{ model: User, as: 'restaurant' }],
+  });
+  if (!table) return res.status(404).send('Table not found');
+
+  const restaurant = table.restaurant || req.currentUser;
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.headers['x-forwarded-host'] || req.get('host');
+  const menuUrl = `${protocol}://${host}/${restaurant.slug}/menu/${table.table_slug}`;
+
+  const buffer = await QRCode.toBuffer(menuUrl, {
+    width: 800,
+    margin: 2,
+    errorCorrectionLevel: 'H',
+    color: { dark: '#0f172a', light: '#ffffff' },
+  });
+
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Content-Disposition', `attachment; filename="table-${table.table_slug}-qr.png"`);
+  return res.send(buffer);
+}
+
+// GET /table-qrcode/:id (direct view/download for placards or printing)
+async function renderPublicQr(req, res) {
+  const table = await RestaurantTable.findByPk(req.params.id, {
+    include: [{ model: User, as: 'restaurant' }],
+  });
+  if (!table || !table.restaurant) return res.status(404).send('Table not found');
+
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.headers['x-forwarded-host'] || req.get('host');
+  const menuUrl = `${protocol}://${host}/${table.restaurant.slug}/menu/${table.table_slug}`;
+
+  const buffer = await QRCode.toBuffer(menuUrl, {
+    width: 800,
+    margin: 2,
+    errorCorrectionLevel: 'H',
+    color: { dark: '#0f172a', light: '#ffffff' },
+  });
+
+  res.setHeader('Content-Type', 'image/png');
+  return res.send(buffer);
+}
+
+module.exports = {
+  index,
+  create,
+  edit,
+  store,
+  destroy,
+  getQrData,
+  downloadQr,
+  renderPublicQr,
+};
+

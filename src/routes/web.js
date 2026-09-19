@@ -86,6 +86,8 @@ router.post('/login/store', checkoutController.login);
 
 router.get('/order/:id', customerOrderController.show);
 
+router.get('/table-qrcode/:id', restaurantTableController.renderPublicQr);
+
 // Public dine-in QR ordering flow
 router.get('/:slug/menu/:table_slug', tableMenuController.showTableMenu);
 router.post('/add-table-menu', tableMenuController.addTableMenu);
@@ -142,6 +144,8 @@ counterAdmin.post('/decline-order/:orderId', counterController.declineOrder);
 counterAdmin.post('/approve-table-order/:tableId', counterController.approveTableOrder);
 counterAdmin.post('/update-counter-settings', counterController.updateCounterSettings);
 counterAdmin.post('/undo-bill-request/:id', counterController.undoBillRequest);
+counterAdmin.get('/table-qr/:id', restaurantTableController.getQrData);
+counterAdmin.get('/table-qr-download/:id', restaurantTableController.downloadQr);
 router.use('/counter-admin', counterAdmin);
 
 // CASHIER (stub landing page - CashierController.php was a one-liner in the original too)
@@ -214,6 +218,8 @@ resOwner.get('/tables/create', restaurantTableController.create);
 resOwner.get('/tables/:id/edit', restaurantTableController.edit);
 resOwner.post('/tables', restaurantTableController.store);
 resOwner.post('/tables/:id/delete', restaurantTableController.destroy);
+resOwner.get('/tables/:id/qr-data', restaurantTableController.getQrData);
+resOwner.get('/tables/:id/qr-download', restaurantTableController.downloadQr);
 
 resOwner.get('/reservations', reservationController.index);
 resOwner.get('/reservations/create', reservationController.create);

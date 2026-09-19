@@ -12,6 +12,8 @@ const {
   OrderItem,
   MenuTemplate,
   UserSubscription,
+  Promotion,
+  PromotionItem,
 } = require('../models');
 const cache = require('../utils/cacheStore');
 const { newOrderPlaced } = require('../utils/events');
@@ -165,12 +167,42 @@ async function showTableMenu(req, res) {
     menuTemplate = { template_id: 1, show_product_image: false, show_category_image: false };
   }
 
+  // Fetch active promotions / special offers for this restaurant
+  const promotionsList = await Promotion.findAll({
+    where: {
+      restaurant_id: restaurant.id,
+      is_active: { [Op.in]: ['Active', 'active'] },
+    },
+    include: [
+      {
+        association: 'items',
+        include: [{ association: 'item' }],
+      },
+    ],
+    order: [['id', 'DESC']],
+  });
+
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const todayName = dayNames[new Date().getDay()];
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const nowClock = new Date().toTimeString().slice(0, 8);
+
+  const activePromotions = promotionsList.filter((p) => {
+    if (p.start_date && p.start_date > todayStr) return false;
+    if (p.end_date && p.end_date < todayStr) return false;
+    if (p.start_time && p.start_time !== 'All Time' && p.start_time > nowClock) return false;
+    if (p.end_time && p.end_time !== 'All Time' && p.end_time < nowClock) return false;
+    if (Array.isArray(p.days) && p.days.length && !p.days.includes('All Day') && !p.days.includes(todayName)) return false;
+    return true;
+  });
+
   res.render('menu/table', {
     table,
     restaurant,
     allMenus,
     usersub,
     categories,
+    promotions: activePromotions,
     isOccupied,
     menuTemplate,
     isSubscribed,
@@ -221,7 +253,29 @@ async function addTableMenu(req, res) {
       // original's getDiscountedPrice($item->price) - variants aren't
       // discounted (there's no per-variant discount concept in either app).
       const activeDiscount = await item.getActiveDiscount();
-      if (activeDiscount) price = item.getDiscountedPrice(activeDiscount);
+      if (activeDiscount) {
+        price = item.getDiscountedPrice(activeDiscount);
+      } else {
+        const promoItem = await PromotionItem.findOne({
+          where: { item_id: item.id },
+          include: [
+            {
+              model: Promotion,
+              as: 'promotion',
+              where: {
+                restaurant_id: table.restaurant_id,
+                is_active: { [Op.in]: ['Active', 'active'] },
+              },
+            },
+          ],
+        });
+        if (promoItem && promoItem.offer_price) {
+          const promoPrice = parseFloat(promoItem.offer_price);
+          if (!isNaN(promoPrice) && promoPrice < price) {
+            price = promoPrice;
+          }
+        }
+      }
     }
 
     const toppingDetails = [];

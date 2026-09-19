@@ -10,6 +10,8 @@ const {
   Subscription,
   UserSubscription,
   MenuTemplate,
+  Promotion,
+  PromotionItem,
 } = require('../models');
 
 async function seedDatabaseIfNeeded() {
@@ -207,6 +209,57 @@ async function seedDatabaseIfNeeded() {
       show_product_image: 1,
       show_category_image: 1,
     });
+
+    // 9. Mains category and items
+    const mains = await Category.create({
+      user_id: owner.id,
+      branch_id: branch.id,
+      category_name: 'Mains',
+      category_description: 'Chef-crafted signature main courses.',
+      category_order: 2,
+    });
+
+    const pizza = await Item.create({
+      user_id: owner.id,
+      branch_id: branch.id,
+      item_name: 'Margherita Artisan Pizza',
+      item_slug: 'demo-margherita-pizza',
+      item_description: 'San Marzano tomatoes, fresh buffalo mozzarella, sweet basil, cold-pressed olive oil.',
+      item_category: mains.id,
+      price: 14.0,
+      has_variants: true,
+      item_order: 1,
+    });
+    await ItemVariant.create({ item_id: pizza.id, name: '10 inch Medium', price: 14.0 });
+    await ItemVariant.create({ item_id: pizza.id, name: '14 inch Large', price: 18.5 });
+
+    await Item.create({
+      user_id: owner.id,
+      branch_id: branch.id,
+      item_name: 'Truffle Tagliatelle Pasta',
+      item_slug: 'demo-truffle-tagliatelle',
+      item_description: 'Handmade tagliatelle, shaved black truffle, wild forest mushrooms, aged parmesan emulsion.',
+      item_category: mains.id,
+      price: 16.5,
+      item_order: 2,
+    });
+
+    // 10. Active Table Promotion / Offer
+    const promo = await Promotion.create({
+      restaurant_id: owner.id,
+      branch_id: branch.id,
+      name: 'Chef Specials & Table Offers',
+      slug: 'summer-specials',
+      start_date: '2026-01-01',
+      end_date: '2027-12-31',
+      start_time: '00:00:00',
+      end_time: '23:59:59',
+      is_active: 'Active',
+      days: ['All Day'],
+    });
+    await PromotionItem.create({ promotion_id: promo.id, item_id: springRolls.id, offer_price: '7.50' });
+    await PromotionItem.create({ promotion_id: promo.id, item_id: icedTea.id, offer_price: '3.00' });
+    await PromotionItem.create({ promotion_id: promo.id, item_id: pizza.id, offer_price: '11.50' });
 
     console.log('[Seed] Demo restaurant data seeded successfully.');
   } catch (error) {

@@ -5,9 +5,9 @@
       <span style="font-size:12px;color:var(--muted);"><%= tables.length %> tables</span>
     </div>
     <h2>Table Setup & QR Codes</h2>
-    <p>Configure restaurant tables, physical seating names, and guest digital menu URLs.</p>
+    <p>Generate, preview, and print high-resolution QR placards for dining tables so guests can scan to view menus, explore offers, and order.</p>
   </div>
-  <a class="btn" href="/tables/create">+ Add table</a>
+  <a class="btn" href="/tables/create" id="btn-add-table">+ Add table</a>
 </div>
 
 <% if (!tables.length) { %>
@@ -18,28 +18,491 @@
     <a class="btn" href="/tables/create">+ Add First Table</a>
   </div>
 <% } else { %>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">
     <% tables.forEach(function(table) { %>
       <div class="card" style="margin:0;display:flex;flex-direction:column;justify-content:space-between;">
         <div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <strong style="font-size:18px;color:var(--ink);"><%= table.table_name %></strong>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;background:#fef3c7;color:#b45309;font-weight:700;font-size:14px;">▦</span>
+              <div>
+                <strong style="font-size:17px;color:var(--ink);display:block;"><%= table.table_name %></strong>
+                <span style="font-size:11.5px;color:var(--muted);">Slug: <%= table.table_slug %></span>
+              </div>
+            </div>
             <span class="badge <%= table.status === 'available' ? 'status-available' : 'status-occupied' %>" style="text-transform:capitalize;">
               <%= (table.status || 'available').replaceAll('_', ' ') %>
             </span>
           </div>
-          <div style="font-size:12.5px;color:var(--muted);background:#f8fafc;padding:8px 10px;border-radius:6px;border:1px solid var(--line);word-break:break-all;margin-bottom:14px;">
-            <span style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--subtle);margin-bottom:2px;">QR Menu URL:</span>
-            <a href="/<%= slug %>/menu/<%= table.table_slug %>" target="_blank" style="color:var(--brand);text-decoration:none;">/<%= slug %>/menu/<%= table.table_slug %> ↗</a>
+
+          <div style="display:flex;gap:12px;background:#f8fafc;padding:10px 12px;border-radius:8px;border:1px solid var(--line);margin-bottom:14px;align-items:center;">
+            <% if (table.qrDataUrl) { %>
+              <img src="<%= table.qrDataUrl %>" alt="QR for <%= table.table_name %>" style="width:56px;height:56px;border-radius:4px;border:1px solid #e2e8f0;background:#fff;padding:2px;cursor:pointer;" class="quick-qr-thumbnail" data-table-id="<%= table.id %>">
+            <% } %>
+            <div style="flex:1;min-width:0;">
+              <span style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--subtle);margin-bottom:2px;">Dine-In Menu Link:</span>
+              <a href="<%= table.menuPath || ('/' + slug + '/menu/' + table.table_slug) %>" target="_blank" style="color:var(--brand);text-decoration:none;font-size:12.5px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                <%= table.menuPath || ('/' + slug + '/menu/' + table.table_slug) %> ↗
+              </a>
+            </div>
           </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:12px;margin-top:auto;">
-          <a class="btn btn-secondary" href="/tables/<%= table.id %>/edit" style="flex:1;text-align:center;padding:7px 12px;font-size:13px;">Edit Table</a>
-          <form method="POST" action="/tables/<%= table.id %>/delete" style="margin:0;" onsubmit="return confirm('Delete this table?');">
-            <button type="submit" class="btn btn-secondary" style="padding:7px 12px;font-size:13px;color:#be123c;">Delete</button>
-          </form>
+
+        <div>
+          <button type="button" class="btn open-qr-modal-btn" id="qr-btn-table-<%= table.id %>"
+            data-table-id="<%= table.id %>"
+            data-table-name="<%= table.table_name %>"
+            data-table-slug="<%= table.table_slug %>"
+            data-table-status="<%= table.status || 'available' %>"
+            data-menu-url="<%= table.menuUrl || ('/' + slug + '/menu/' + table.table_slug) %>"
+            data-qr-image="<%= table.qrDataUrl || '' %>"
+            style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            Generate & Print QR
+          </button>
+          <div style="display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:10px;">
+            <a class="btn btn-secondary" href="/tables/<%= table.id %>/edit" style="flex:1;text-align:center;padding:6px 10px;font-size:12.5px;">Edit</a>
+            <form method="POST" action="/tables/<%= table.id %>/delete" style="margin:0;" onsubmit="return confirm('Delete this table?');">
+              <button type="submit" class="btn btn-secondary" style="padding:6px 10px;font-size:12.5px;color:#be123c;">Delete</button>
+            </form>
+          </div>
         </div>
       </div>
     <% }) %>
   </div>
 <% } %>
+
+<!-- QR CODE MODAL -->
+<div id="table-qr-modal" class="qr-modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="modal-table-title">
+  <div class="qr-modal-container">
+    <div class="qr-modal-header">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <span class="badge status-available" id="modal-table-badge">● Active Table</span>
+          <span style="font-size:12px;color:var(--muted);"><%= restaurant ? restaurant.name : 'Restaurant' %></span>
+        </div>
+        <h3 id="modal-table-title" style="margin:0;font-size:20px;color:var(--ink);">Table QR Code</h3>
+      </div>
+      <button type="button" id="close-qr-modal-btn" class="qr-modal-close" aria-label="Close modal">&times;</button>
+    </div>
+
+    <!-- PRINTABLE TABLE CARD / TENT STAND -->
+    <div class="qr-modal-body">
+      <div id="printable-table-placard" class="table-placard-card">
+        <div class="placard-brand">
+          <div class="placard-logo-mark">✦</div>
+          <div>
+            <h4 class="placard-restaurant-name"><%= restaurant ? restaurant.name : 'Demo Restaurant' %></h4>
+            <span class="placard-subtitle">TABLE SERVICE & DIGITAL MENU</span>
+          </div>
+        </div>
+
+        <div class="placard-table-callout">
+          <span class="placard-table-prefix">TABLE</span>
+          <strong id="placard-table-name" class="placard-table-number">1</strong>
+        </div>
+
+        <div class="placard-qr-wrapper">
+          <img id="placard-qr-img" src="" alt="Dine-in Menu QR Code" class="placard-qr-graphic">
+        </div>
+
+        <div class="placard-instructions">
+          <div class="placard-instruction-step">
+            <span class="step-icon">📷</span>
+            <span>Scan with camera to order</span>
+          </div>
+          <div class="placard-instruction-step">
+            <span class="step-icon">🔥</span>
+            <span>View daily offers & menu</span>
+          </div>
+          <div class="placard-instruction-step">
+            <span class="step-icon">⚡</span>
+            <span>Orders go straight to kitchen</span>
+          </div>
+        </div>
+
+        <div class="placard-footer">
+          <span class="placard-url" id="placard-url-text"></span>
+        </div>
+      </div>
+
+      <!-- SIDEBAR CONTROLS IN MODAL -->
+      <div class="qr-actions-panel">
+        <div style="background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:16px;">
+          <label style="display:block;font-size:11.5px;font-weight:700;color:var(--subtle);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:6px;">Target Dining URL</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="text" id="modal-url-input" readonly style="flex:1;font-size:12.5px;padding:7px 10px;background:#fff;border:1px solid var(--line);border-radius:6px;color:var(--ink);font-family:monospace;">
+            <button type="button" id="copy-url-btn" class="btn btn-secondary" style="padding:7px 12px;font-size:12px;white-space:nowrap;">Copy Link</button>
+          </div>
+          <span id="copy-status-msg" style="display:block;font-size:11.5px;color:#16a34a;font-weight:600;margin-top:4px;min-height:16px;"></span>
+        </div>
+
+        <div style="display:grid;gap:10px;">
+          <button type="button" id="print-placard-btn" class="btn" style="padding:11px 16px;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:var(--shadow-brand);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Print Table Stand / Placard
+          </button>
+
+          <a id="download-qr-png-btn" href="#" download="table-qr.png" class="btn btn-secondary" style="padding:10px 16px;font-size:13.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download High-Res QR (PNG)
+          </a>
+
+          <a id="preview-customer-menu-btn" href="#" target="_blank" class="btn btn-secondary" style="padding:10px 16px;font-size:13.5px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;color:var(--brand);">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+            Open Menu as Customer ↗
+          </a>
+        </div>
+
+        <div style="margin-top:16px;padding:12px;border-radius:8px;background:#fffbeb;border:1px solid #fef3c7;font-size:12px;color:#92400e;line-height:1.5;">
+          <strong>Tip for staff:</strong> You can laminate this placard or place it in standard 4"x6" acrylic table stands. Customers can scan directly with iOS or Android camera apps to instantly browse dishes and special offers.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .qr-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 16px;
+    animation: qrFadeIn 0.18s ease-out;
+  }
+  @keyframes qrFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .qr-modal-container {
+    background: #ffffff;
+    width: 100%;
+    max-width: 820px;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--line);
+    overflow: hidden;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .qr-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--line);
+    background: #fafaf9;
+  }
+  .qr-modal-close {
+    background: transparent;
+    border: none;
+    font-size: 26px;
+    color: var(--muted);
+    cursor: pointer;
+    line-height: 1;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .qr-modal-close:hover {
+    background: #f1f5f9;
+    color: var(--ink);
+  }
+  .qr-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+  @media (max-width: 768px) {
+    .qr-modal-body {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Table placard stand styling */
+  .table-placard-card {
+    background: #ffffff;
+    border: 2px solid #0f172a;
+    border-radius: 14px;
+    padding: 24px 20px;
+    text-align: center;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .placard-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .placard-logo-mark {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, #f97316, #ea580c);
+    color: #fff;
+    border-radius: 6px;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    font-size: 14px;
+  }
+  .placard-restaurant-name {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.01em;
+  }
+  .placard-subtitle {
+    display: block;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #64748b;
+  }
+  .placard-table-callout {
+    margin-bottom: 12px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 6px 16px;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .placard-table-prefix {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    color: #475569;
+  }
+  .placard-table-number {
+    font-size: 22px;
+    font-weight: 900;
+    color: #ea580c;
+  }
+  .placard-qr-wrapper {
+    background: #ffffff;
+    padding: 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    margin-bottom: 14px;
+    line-height: 0;
+  }
+  .placard-qr-graphic {
+    width: 190px;
+    height: 190px;
+    display: block;
+  }
+  .placard-instructions {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 12px;
+    text-align: left;
+    width: 100%;
+    background: #fafaf9;
+    padding: 8px 12px;
+    border-radius: 6px;
+  }
+  .placard-instruction-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .placard-footer {
+    border-top: 1px solid #f1f5f9;
+    padding-top: 8px;
+    width: 100%;
+  }
+  .placard-url {
+    font-size: 10px;
+    color: #94a3b8;
+    font-family: monospace;
+    word-break: break-all;
+  }
+
+  /* PRINT STYLESHEET: Print ONLY the placard card */
+  @media print {
+    body * {
+      visibility: hidden !important;
+    }
+    #table-qr-modal,
+    #printable-table-placard,
+    #printable-table-placard * {
+      visibility: visible !important;
+    }
+    #table-qr-modal {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      background: none !important;
+      padding: 0 !important;
+      display: block !important;
+    }
+    .qr-modal-container {
+      box-shadow: none !important;
+      border: none !important;
+      max-width: 100% !important;
+      max-height: 100% !important;
+    }
+    .qr-modal-header,
+    .qr-actions-panel {
+      display: none !important;
+    }
+    .qr-modal-body {
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+      padding: 20px !important;
+    }
+    #printable-table-placard {
+      width: 320px !important;
+      border: 2px solid #000 !important;
+      box-shadow: none !important;
+      page-break-inside: avoid !important;
+      margin: 20px auto !important;
+    }
+    .placard-qr-graphic {
+      width: 200px !important;
+      height: 200px !important;
+    }
+  }
+</style>
+
+<script>
+  (function() {
+    const modal = document.getElementById('table-qr-modal');
+    const closeBtn = document.getElementById('close-qr-modal-btn');
+    const titleEl = document.getElementById('modal-table-title');
+    const badgeEl = document.getElementById('modal-table-badge');
+    const placardTableEl = document.getElementById('placard-table-name');
+    const qrImgEl = document.getElementById('placard-qr-img');
+    const urlTextEl = document.getElementById('placard-url-text');
+    const urlInputEl = document.getElementById('modal-url-input');
+    const copyBtn = document.getElementById('copy-url-btn');
+    const copyStatusEl = document.getElementById('copy-status-msg');
+    const printBtn = document.getElementById('print-placard-btn');
+    const downloadBtn = document.getElementById('download-qr-png-btn');
+    const previewBtn = document.getElementById('preview-customer-menu-btn');
+
+    let currentTableData = null;
+
+    function openModal(data) {
+      currentTableData = data;
+      titleEl.textContent = 'Table ' + data.name + ' QR Stand';
+      badgeEl.textContent = '● ' + (data.status || 'available').replace(/_/g, ' ');
+      placardTableEl.textContent = data.name.replace(/^Table\s*/i, '');
+      
+      const absoluteUrl = data.url.startsWith('http') ? data.url : (window.location.origin + data.url);
+      urlTextEl.textContent = absoluteUrl;
+      urlInputEl.value = absoluteUrl;
+      previewBtn.href = absoluteUrl;
+      downloadBtn.href = '/tables/' + data.id + '/qr-download';
+      downloadBtn.download = 'table-' + data.slug + '-qr.png';
+      copyStatusEl.textContent = '';
+
+      if (data.image) {
+        qrImgEl.src = data.image;
+      } else {
+        qrImgEl.src = '/tables/' + data.id + '/qr-download';
+      }
+
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && modal.style.display === 'flex') {
+        closeModal();
+      }
+    });
+
+    // Wire table card button triggers
+    document.querySelectorAll('.open-qr-modal-btn, .quick-qr-thumbnail').forEach(function(el) {
+      el.addEventListener('click', function() {
+        const btn = el.classList.contains('open-qr-modal-btn') ? el : el.closest('.card').querySelector('.open-qr-modal-btn');
+        if (!btn) return;
+        
+        const data = {
+          id: btn.dataset.tableId,
+          name: btn.dataset.tableName,
+          slug: btn.dataset.tableSlug,
+          status: btn.dataset.tableStatus,
+          url: btn.dataset.menuUrl,
+          image: btn.dataset.qrImage
+        };
+        openModal(data);
+      });
+    });
+
+    // Copy URL to clipboard
+    copyBtn.addEventListener('click', function() {
+      if (!urlInputEl.value) return;
+      navigator.clipboard.writeText(urlInputEl.value)
+        .then(function() {
+          copyStatusEl.textContent = '✓ Table menu link copied to clipboard!';
+          setTimeout(function() { copyStatusEl.textContent = ''; }, 3000);
+        })
+        .catch(function() {
+          urlInputEl.select();
+          document.execCommand('copy');
+          copyStatusEl.textContent = '✓ Copied!';
+          setTimeout(function() { copyStatusEl.textContent = ''; }, 3000);
+        });
+    });
+
+    // Print table card stand
+    printBtn.addEventListener('click', function() {
+      window.print();
+    });
+  })();
+</script>
+
