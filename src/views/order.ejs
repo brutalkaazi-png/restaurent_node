@@ -3,38 +3,68 @@ const items = order.order_items || [];
 const itemsTotal = items.reduce((sum, oi) => sum + parseFloat(oi.total), 0);
 const deliveryCharge = parseFloat(order.delivery_charge || 0);
 %>
-<div class="card">
-  <h3>Order Confirmed</h3>
-  <p>Order #<%= order.id %></p>
-  <h3>Thank you, <%= order.name %>!</h3>
-  <p>
-    We've received your order and are getting it ready.
-    <% if (order.email) { %>A confirmation has been noted for <strong><%= order.email %></strong>.<% } %>
+<div class="card welcome-card" style="margin-bottom:20px;text-align:center;justify-content:center;flex-direction:column;padding:36px 20px;">
+  <div style="width:56px;height:56px;border-radius:50%;background:#ecfdf5;color:#059669;display:grid;place-items:center;font-size:26px;margin-bottom:12px;">✓</div>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+    <span class="badge status-available">● Order Received</span>
+    <span style="font-size:13px;color:var(--muted);">Order #<%= order.id %></span>
+  </div>
+  <h2 style="font-size:26px;margin-bottom:6px;">Thank you, <%= order.name %>!</h2>
+  <p style="max-width:480px;margin:0 auto;color:var(--muted);">
+    We've received your order and our kitchen team is getting it prepared.
+    <% if (order.email) { %><br>A confirmation has been recorded for <strong><%= order.email %></strong>.<% } %>
   </p>
 </div>
 
-<% if (order.email) { %>
-  <div class="card">
-    <h4>Customer details</h4>
-    <p><strong>Email</strong><br><%= order.email %></p>
-    <p><strong>Phone</strong><br><%= order.phone %></p>
-    <% if (order.address) { %><p><strong>Delivery address</strong><br><%= order.address %></p><% } %>
-  </div>
-<% } %>
-
-<div class="card">
-  <h4>Order details</h4>
-  <% items.forEach(function(oi) { %>
-    <div class="item-row">
-      <div>
-        <%= oi.qty %> x <%= oi.item ? oi.item.item_name : 'Item' %>
-        <% if (oi.variant_name) { %> (<%= oi.variant_name %>)<% } %>
-        <% if (oi.remarks) { %><br><small>Note: <%= oi.remarks %></small><% } %>
+<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;max-width:860px;margin:0 auto;">
+  <% if (order.email || order.phone || order.address) { %>
+    <div class="card">
+      <h3 style="margin-top:0;margin-bottom:12px;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:8px;">Customer Information</h3>
+      <div style="display:grid;gap:10px;">
+        <% if (order.email) { %>
+          <div>
+            <span style="font-size:12px;color:var(--muted);display:block;">Email address</span>
+            <strong style="color:var(--ink);"><%= order.email %></strong>
+          </div>
+        <% } %>
+        <% if (order.phone) { %>
+          <div>
+            <span style="font-size:12px;color:var(--muted);display:block;">Phone number</span>
+            <strong style="color:var(--ink);"><%= order.phone %></strong>
+          </div>
+        <% } %>
+        <% if (order.address) { %>
+          <div>
+            <span style="font-size:12px;color:var(--muted);display:block;">Delivery address</span>
+            <strong style="color:var(--ink);"><%= order.address %></strong>
+          </div>
+        <% } %>
+        <div>
+          <span style="font-size:12px;color:var(--muted);display:block;">Order Status</span>
+          <span class="badge status-available" style="text-transform:capitalize;margin-top:4px;"><%= order.order_status %></span>
+        </div>
       </div>
-      <div><%= parseFloat(oi.total).toFixed(2) %></div>
     </div>
-  <% }) %>
-  <div class="item-row"><span>Delivery charge</span><span><%= deliveryCharge.toFixed(2) %></span></div>
-  <div class="item-row"><strong>Total</strong><strong><%= parseFloat(order.total_cost).toFixed(2) %></strong></div>
-  <p>Status: <span class="item-status"><%= order.order_status %></span></p>
+  <% } %>
+
+  <div class="card">
+    <h3 style="margin-top:0;margin-bottom:12px;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:8px;">Receipt Breakdown</h3>
+    <div style="display:grid;gap:8px;margin-bottom:14px;">
+      <% items.forEach(function(oi) { %>
+        <div class="item-row" style="padding:6px 0;border-bottom:1px dashed var(--line);">
+          <div>
+            <strong style="color:var(--ink);"><%= oi.qty %>x</strong> <%= oi.item ? oi.item.item_name : 'Item' %>
+            <% if (oi.variant_name) { %><span style="font-size:12px;color:var(--muted);">(<%= oi.variant_name %>)</span><% } %>
+            <% if (oi.remarks) { %><div style="font-size:12px;color:var(--muted);">Note: <%= oi.remarks %></div><% } %>
+          </div>
+          <strong style="color:var(--ink);">$<%= parseFloat(oi.total).toFixed(2) %></strong>
+        </div>
+      <% }) %>
+    </div>
+    <div class="item-row" style="padding:4px 0;"><span>Delivery charge</span><span>$<%= deliveryCharge.toFixed(2) %></span></div>
+    <div class="item-row" style="padding:8px 0 0;border-top:2px solid var(--line);margin-top:6px;">
+      <strong style="font-size:16px;">Total Paid</strong>
+      <strong style="font-size:18px;color:var(--brand);">$<%= parseFloat(order.total_cost).toFixed(2) %></strong>
+    </div>
+  </div>
 </div>

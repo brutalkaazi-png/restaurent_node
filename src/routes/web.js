@@ -266,6 +266,18 @@ resOwner.get('/table-order-by-items', tableOrderReportController.index);
 resOwner.get('/table-order-by-items/view/:id', tableOrderReportController.view);
 resOwner.get('/order-summary', orderSummaryController.index);
 
+// Route the root path based on user auth role or to login
+router.get('/', (req, res) => {
+  if (req.session && req.session.userId && req.currentUser) {
+    if (req.currentUser.user_type === 'S') return res.redirect('/superadmin/dashboard');
+    if (req.currentUser.user_type === 'R' && req.currentUser.user_role !== 'waiter') return res.redirect('/dashboard');
+    if (req.currentUser.user_type === 'K') return res.redirect('/kitchen-admin/kitchen');
+    if (req.currentUser.user_type === 'Co') return res.redirect(`/counter-admin/${req.currentUser.slug}/counter`);
+    return res.redirect('/home');
+  }
+  return res.redirect('/login');
+});
+
 // Keep the shared authenticated landing page ahead of the owner router below;
 // resOwner applies requireRestaurantOwner to every path mounted at '/'.
 router.get('/home', ensureAuth, (req, res) => res.send(`Logged in as user #${req.session.userId}`));

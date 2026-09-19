@@ -1,46 +1,103 @@
 <% function mediaUrl(path) { return path ? (path.startsWith('assets/') ? '/' + path : '/uploads/' + path) : ''; } %>
-<div class="card">
-  <% if (restaurant.logo) { %><img src="<%= mediaUrl(restaurant.logo) %>" alt="<%= restaurant.name %>" style="width:72px;height:48px;object-fit:cover;border-radius:8px;"> <% } %>
-  <h2><%= restaurant.name %></h2>
-  <p><%= restaurant.address %> &middot; Delivery/Pickup ordering</p>
+<div class="card menu-restaurant-header">
+  <% if (restaurant.logo) { %>
+    <img src="<%= mediaUrl(restaurant.logo) %>" alt="<%= restaurant.name %>" class="menu-restaurant-logo">
+  <% } else { %>
+    <div class="menu-restaurant-logo" style="display:grid;place-items:center;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;font-size:28px;font-weight:800;">✦</div>
+  <% } %>
+  <div style="flex:1;min-width:0;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;">
+      <span class="badge status-available">● Open for Orders</span>
+      <span style="font-size:12px;color:var(--muted);">Delivery & Pickup</span>
+    </div>
+    <h2 style="font-size:24px;margin-bottom:4px;"><%= restaurant.name %></h2>
+    <p style="margin:0;color:var(--muted);font-size:13.5px;"><%= restaurant.address || 'Fresh food delivered to your door' %></p>
+  </div>
 </div>
 
 <% if (!allMenus.length) { %>
-  <p>No menu items available.</p>
+  <div class="card" style="text-align:center;padding:48px 24px;">
+    <div style="font-size:32px;margin-bottom:12px;">🍽️</div>
+    <h3>No menu items available</h3>
+    <p style="color:var(--muted);">Please check back soon for our latest dishes.</p>
+  </div>
 <% } else { %>
   <% categories.forEach(function(cat) { %>
-    <div class="card">
-      <% if (cat.category_image) { %><img src="<%= mediaUrl(cat.category_image) %>" alt="<%= cat.category_name %>" style="width:100%;max-height:150px;object-fit:cover;border-radius:8px;"> <% } %>
-      <h3><%= cat.category_name %></h3>
-      <% allMenus.filter(function(item){ return item.item_category === cat.id }).forEach(function(item) { %>
-        <div class="item-row">
+    <% const itemsInCat = allMenus.filter(function(item){ return item.item_category === cat.id }); %>
+    <% if (itemsInCat.length) { %>
+      <div class="card menu-category-card" id="category-<%= cat.id %>">
+        <div class="menu-category-header">
+          <% if (cat.category_image) { %>
+            <img src="<%= mediaUrl(cat.category_image) %>" alt="<%= cat.category_name %>" class="menu-category-img">
+          <% } %>
           <div>
-            <% if (item.item_image) { %><img src="<%= mediaUrl(item.item_image) %>" alt="<%= item.item_name %>" style="width:96px;height:72px;object-fit:cover;border-radius:8px;margin-bottom:6px;"> <% } %>
-            <strong><%= item.item_name %></strong><br>
-            <% if (item.sold_out) { %><small style="color:#be123c;font-weight:700;">Sold out</small><br><% } %>
-            <small><%= item.item_description || '' %></small><br>
-            <% if (item.variants && item.variants.length) { %>
-              <small>From $<%= Math.min(...item.variants.map(v => parseFloat(v.price))).toFixed(2) %></small>
-            <% } else if (item.discounted_price !== null && item.discounted_price !== undefined) { %>
-              <small><s>$<%= parseFloat(item.price).toFixed(2) %></s> <strong style="color:#28a745;">$<%= item.discounted_price.toFixed(2) %></strong> (<%= item.active_discount.discount_percentage %>% off now)</small>
-            <% } else { %>
-              <small>$<%= parseFloat(item.price).toFixed(2) %></small>
+            <h3 style="margin:0;font-size:18px;"><%= cat.category_name %></h3>
+            <% if (cat.category_description) { %>
+              <p style="margin:2px 0 0;font-size:12.5px;color:var(--muted);"><%= cat.category_description %></p>
             <% } %>
           </div>
-          <button class="btn add-item-btn" data-item-id="<%= item.id %>" <%= item.sold_out ? 'disabled aria-label="Sold out"' : '' %>><%= item.sold_out ? 'Sold out' : 'Add' %></button>
         </div>
-      <% }) %>
-    </div>
+
+        <div style="display:grid;gap:12px;">
+          <% itemsInCat.forEach(function(item) { %>
+            <div class="dish-card">
+              <div class="dish-info">
+                <% if (item.item_image) { %>
+                  <img src="<%= mediaUrl(item.item_image) %>" alt="<%= item.item_name %>" class="dish-img">
+                <% } %>
+                <div class="dish-details">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
+                    <strong class="dish-title"><%= item.item_name %></strong>
+                    <% if (item.is_drink) { %><span class="badge" style="background:#eff6ff;color:#1d4ed8;">Drink</span><% } %>
+                    <% if (item.sold_out) { %><span class="badge status-sold-out">Sold out</span><% } %>
+                    <% if (item.active_discount && item.active_discount.discount_percentage) { %>
+                      <span class="badge status-available"><%= item.active_discount.discount_percentage %>% OFF</span>
+                    <% } %>
+                  </div>
+                  <% if (item.item_description) { %>
+                    <div class="dish-desc"><%= item.item_description %></div>
+                  <% } %>
+                  <div class="dish-price">
+                    <% if (item.variants && item.variants.length) { %>
+                      <span style="color:var(--ink-secondary);font-size:13px;font-weight:600;">From </span>$<%= Math.min(...item.variants.map(v => parseFloat(v.price))).toFixed(2) %>
+                    <% } else if (item.discounted_price !== null && item.discounted_price !== undefined) { %>
+                      <s style="color:var(--subtle);font-weight:400;margin-right:6px;">$<%= parseFloat(item.price).toFixed(2) %></s>
+                      <strong class="dish-price-discount">$<%= item.discounted_price.toFixed(2) %></strong>
+                    <% } else { %>
+                      $<%= parseFloat(item.price).toFixed(2) %>
+                    <% } %>
+                  </div>
+                </div>
+              </div>
+              <button class="btn add-item-btn" data-item-id="<%= item.id %>" <%= item.sold_out ? 'disabled aria-label="Sold out"' : '' %> style="<%= item.sold_out ? '' : 'min-width:96px;' %>">
+                <%= item.sold_out ? 'Sold out' : '+ Add' %>
+              </button>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
   <% }) %>
 <% } %>
 
-<div class="card" id="cart-summary">
-  <a class="btn" href="/checkout" id="view-cart-btn">Go to checkout</a>
+<div class="cart-summary-bar" id="cart-summary">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span style="font-size:20px;">🛍️</span>
+    <div>
+      <strong style="display:block;font-size:14px;color:var(--ink);">Ready to order?</strong>
+      <span style="font-size:12px;color:var(--muted);">Add dishes to start checkout</span>
+    </div>
+  </div>
+  <a class="btn" href="/checkout" id="view-cart-btn" style="box-shadow:var(--shadow-brand);">Go to checkout ↗</a>
 </div>
 
 <script>
   document.querySelectorAll('.add-item-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      const origText = btn.textContent;
+      btn.textContent = 'Adding...';
+      btn.disabled = true;
+
       fetch('/add-to-cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -48,8 +105,28 @@
       })
         .then(r => r.json())
         .then(data => {
-          document.getElementById('cart-summary').innerHTML =
-            '<a class="btn" href="/checkout">Go to checkout (' + data.totalItem + ' item(s))</a>';
+          btn.textContent = '✓ Added';
+          setTimeout(() => {
+            btn.textContent = origText;
+            btn.disabled = false;
+          }, 900);
+
+          const summary = document.getElementById('cart-summary');
+          if (summary) {
+            summary.innerHTML =
+              '<div style="display:flex;align-items:center;gap:12px;">' +
+                '<span style="font-size:20px;">🛍️</span>' +
+                '<div>' +
+                  '<strong style="display:block;font-size:14px;color:var(--ink);">' + data.totalItem + ' item' + (data.totalItem === 1 ? '' : 's') + ' in cart</strong>' +
+                  '<span style="font-size:12px;color:var(--muted);">Proceed to address & payment</span>' +
+                '</div>' +
+              '</div>' +
+              '<a class="btn" href="/checkout" id="view-cart-btn" style="box-shadow:var(--shadow-brand);">Go to checkout (' + data.totalItem + ') ↗</a>';
+          }
+        })
+        .catch(() => {
+          btn.textContent = origText;
+          btn.disabled = false;
         });
     });
   });

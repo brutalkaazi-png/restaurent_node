@@ -1,25 +1,102 @@
-<style>
-  .welcome-card { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:28px; background:linear-gradient(120deg,#fff 0%,#fff7ed 100%); border-color:#fed7aa; }
-  .welcome-card h2 { margin-bottom:7px; font-size:25px; } .welcome-card p { margin:0; color:#677489; }
-  .quick-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
-  .quick-link { display:block; padding:17px; border:1px solid var(--line); border-radius:12px; background:#fff; color:var(--ink); text-decoration:none; transition:transform .15s,box-shadow .15s,border-color .15s; }
-  .quick-link:hover { transform:translateY(-2px); border-color:#fdba74; box-shadow:var(--shadow); } .quick-link strong,.quick-link span { display:block; } .quick-link strong { margin-top:12px; font-size:14px; } .quick-link span { color:var(--muted); font-size:12px; margin-top:4px; } .quick-icon { font-size:20px; }
-  @media(max-width:700px) { .welcome-card { align-items:flex-start; flex-direction:column; } .quick-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-</style>
-<section class="card welcome-card"><div><h2>Good to see you, <%= currentUser.name %>.</h2><p>Everything you need to keep today’s service moving.</p></div><a class="btn" href="/menus/create">+ Add menu item</a></section>
+<div class="card welcome-card">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <span class="badge status-available" style="font-size:11px;">● Service Active</span>
+      <span style="font-size:12px;color:var(--muted);"><%= currentUser.slug ? '/' + currentUser.slug : '' %></span>
+    </div>
+    <h2>Good to see you, <%= currentUser.name %>.</h2>
+    <p>Everything you need to monitor sales, floor status, and kitchen throughput today.</p>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <% if (currentUser.slug) { %>
+      <a class="btn btn-secondary" href="/<%= currentUser.slug %>/menu" target="_blank" rel="noopener">Preview Menu ↗</a>
+    <% } %>
+    <a class="btn" href="/menus/create">+ Add menu item</a>
+  </div>
+</div>
+
+<div style="margin:24px 0 12px;display:flex;align-items:center;justify-content:space-between;">
+  <h3 style="margin:0;font-size:16px;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);">Service Metrics</h3>
+  <span style="font-size:12px;color:var(--subtle);">Live updates</span>
+</div>
+
 <section class="quick-grid" aria-label="Restaurant summary">
-  <div class="quick-link"><span class="quick-icon">$</span><strong>$<%= stats.sales.toFixed(2) %> sales</strong><span><%= stats.completedOrders %> completed orders</span></div>
-  <div class="quick-link"><span class="quick-icon">◷</span><strong>$<%= stats.averageTicket.toFixed(2) %> average ticket</strong><span>Completed order average</span></div>
-  <div class="quick-link"><span class="quick-icon">▦</span><strong><%= stats.activeTables %> active tables</strong><span>Live dining floor</span></div>
-  <div class="quick-link"><span class="quick-icon">☷</span><strong><%= stats.menuCount %> menu items</strong><span><%= stats.soldOutCount %> currently sold out</span></div>
-  <div class="quick-link"><span class="quick-icon">♨</span><strong><%= stats.kitchenQueue %> kitchen items</strong><span>Waiting or in preparation</span></div>
+  <div class="quick-link">
+    <span class="quick-icon" style="background:#ecfdf5;color:#059669;">$</span>
+    <strong style="font-size:22px;color:var(--ink);">$<%= stats.sales.toFixed(2) %></strong>
+    <span><%= stats.completedOrders %> completed order<%= stats.completedOrders === 1 ? '' : 's' %></span>
+  </div>
+  <div class="quick-link">
+    <span class="quick-icon" style="background:#eff6ff;color:#2563eb;">◷</span>
+    <strong style="font-size:22px;color:var(--ink);">$<%= stats.averageTicket.toFixed(2) %></strong>
+    <span>Average ticket size</span>
+  </div>
+  <div class="quick-link">
+    <span class="quick-icon" style="background:#fef3c7;color:#d97706;">▦</span>
+    <strong style="font-size:22px;color:var(--ink);"><%= stats.activeTables %></strong>
+    <span>Active table<%= stats.activeTables === 1 ? '' : 's' %> on floor</span>
+  </div>
+  <div class="quick-link">
+    <span class="quick-icon" style="background:#f1f5f9;color:#475569;">☷</span>
+    <strong style="font-size:22px;color:var(--ink);"><%= stats.menuCount %></strong>
+    <span><%= stats.soldOutCount > 0 ? stats.soldOutCount + ' sold out' : 'All available' %></span>
+  </div>
+  <div class="quick-link">
+    <span class="quick-icon" style="background:#fff1f2;color:#e11d48;">♨</span>
+    <strong style="font-size:22px;color:var(--ink);"><%= stats.kitchenQueue %></strong>
+    <span>Orders in prep queue</span>
+  </div>
 </section>
+
+<div style="margin:28px 0 12px;">
+  <h3 style="margin:0;font-size:16px;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);">Operations & Workspaces</h3>
+</div>
+
 <section class="quick-grid" aria-label="Quick actions">
-  <a class="quick-link" href="/customers"><span class="quick-icon">♙</span><strong>Customers</strong><span>Review guest history and notes.</span></a>
-  <a class="quick-link" href="/menus"><span class="quick-icon">☷</span><strong>Manage menu</strong><span>Add and organise dishes.</span></a>
-  <a class="quick-link" href="/tables"><span class="quick-icon">▦</span><strong>Table setup</strong><span>Update dining tables.</span></a>
-  <a class="quick-link" href="/order-summary"><span class="quick-icon">▤</span><strong>Order summary</strong><span>Review sales performance.</span></a>
-  <a class="quick-link" href="/inventory"><span class="quick-icon">◈</span><strong>Inventory</strong><span>Track ingredients and stock.</span></a>
-  <a class="quick-link" href="/counter-admin/<%= currentUser.slug %>/counter"><span class="quick-icon">▣</span><strong>Counter</strong><span>Manage live table orders.</span></a>
-  <a class="quick-link" href="/kitchen-admin/kitchen"><span class="quick-icon">♨</span><strong>Kitchen board</strong><span>Keep the pass in sync.</span></a>
+  <a class="quick-link" href="/counter-admin/<%= currentUser.slug %>/counter">
+    <span class="quick-icon" style="background:var(--brand-soft);color:var(--brand);">▣</span>
+    <strong>Counter & Billing</strong>
+    <span>Live floor plan, guest tabs, and checkout.</span>
+  </a>
+  <a class="quick-link" href="/kitchen-admin/kitchen">
+    <span class="quick-icon" style="background:#fff1f2;color:#e11d48;">♨</span>
+    <strong>Kitchen KDS</strong>
+    <span>Active cook tickets, timers, and fulfillment.</span>
+  </a>
+  <a class="quick-link" href="/menus">
+    <span class="quick-icon" style="background:#f1f5f9;color:#334155;">☷</span>
+    <strong>Menu & Dishes</strong>
+    <span>Manage items, variants, and 86 sold-out items.</span>
+  </a>
+  <a class="quick-link" href="/categories">
+    <span class="quick-icon" style="background:#f1f5f9;color:#334155;">◫</span>
+    <strong>Categories</strong>
+    <span>Organize menu courses and displays.</span>
+  </a>
+  <a class="quick-link" href="/tables">
+    <span class="quick-icon" style="background:#f1f5f9;color:#334155;">▦</span>
+    <strong>Table Setup</strong>
+    <span>QR codes, table names, and seating zones.</span>
+  </a>
+  <a class="quick-link" href="/staff-calls">
+    <span class="quick-icon" style="background:#ecfdf5;color:#059669;">♧</span>
+    <strong>Staff Calls</strong>
+    <span>Live guest calls for service, water, or bill.</span>
+  </a>
+  <a class="quick-link" href="/inventory">
+    <span class="quick-icon" style="background:#eff6ff;color:#2563eb;">◈</span>
+    <strong>Inventory</strong>
+    <span>Stock levels, ingredients, and replenishment.</span>
+  </a>
+  <a class="quick-link" href="/order-summary">
+    <span class="quick-icon" style="background:#fef3c7;color:#d97706;">▤</span>
+    <strong>Sales Reports</strong>
+    <span>Daily, monthly, and dine-in vs online metrics.</span>
+  </a>
+  <a class="quick-link" href="/customers">
+    <span class="quick-icon" style="background:#f1f5f9;color:#334155;">♙</span>
+    <strong>Customers</strong>
+    <span>Guest profiles, order history, and preferences.</span>
+  </a>
 </section>
+

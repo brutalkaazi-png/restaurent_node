@@ -1,10 +1,19 @@
-<div class="card">
-  <div class="item-row">
-    <h2>Menu items</h2>
-    <a class="btn" href="/menus/create">+ Add item</a>
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Menu Catalog</span>
+      <span style="font-size:12px;color:var(--muted);"><%= menus.length %> items total</span>
+    </div>
+    <h2>Menu Items</h2>
+    <p>Manage dishes, prices, beverage routing, variants, and live 86/sold-out status.</p>
   </div>
-  <form method="GET" action="/menus">
-    <select name="category_id" onchange="this.form.submit()">
+  <a class="btn" href="/menus/create">+ Add menu item</a>
+</div>
+
+<div class="card" style="margin-bottom:16px;padding:14px 20px;">
+  <form method="GET" action="/menus" style="display:flex;align-items:center;gap:12px;margin:0;flex-wrap:wrap;">
+    <label style="margin:0;font-size:13px;font-weight:600;color:var(--muted);">Filter Course:</label>
+    <select name="category_id" onchange="this.form.submit()" style="margin:0;max-width:240px;">
       <option value="">All categories</option>
       <% categories.forEach(function(c) { %>
         <option value="<%= c.id %>" <%= String(selectedCategoryId) === String(c.id) ? 'selected' : '' %>><%= c.category_name %></option>
@@ -14,29 +23,40 @@
 </div>
 
 <% if (!menus.length) { %>
-  <div class="card">No menu items yet.</div>
-<% } %>
-
-<% menus.forEach(function(item) { %>
-  <div class="card">
-    <div class="item-row">
-      <div>
-        <strong><%= item.item_name %></strong>
-        <% if (item.is_drink) { %><span style="font-size:0.75em;color:#28a745;"> (drink)</span><% } %>
-        <% if (item.sold_out) { %><span style="font-size:0.75em;color:#be123c;"> (sold out)</span><% } %>
-        <div style="font-size:0.9em;color:#777;">
-          <%= item.has_variants ? 'Has variants' : (setting.currency || '$') + parseFloat(item.price || 0).toFixed(2) %>
+  <div class="card" style="text-align:center;padding:48px 20px;">
+    <div style="font-size:32px;margin-bottom:8px;">🍲</div>
+    <h3 style="margin:0 0 6px;">No menu items found</h3>
+    <p style="color:var(--muted);margin:0 0 16px;">Get started by adding your first appetizer, main course, or drink.</p>
+    <a class="btn" href="/menus/create">+ Add First Item</a>
+  </div>
+<% } else { %>
+  <div style="display:grid;gap:10px;">
+    <% menus.forEach(function(item) { %>
+      <div class="card" style="margin:0;padding:16px 20px;">
+        <div class="item-row">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+              <strong style="font-size:16px;color:var(--ink);"><%= item.item_name %></strong>
+              <% if (item.is_drink) { %><span class="badge" style="background:#eff6ff;color:#1d4ed8;">Drink / Bar</span><% } %>
+              <% if (item.sold_out) { %><span class="badge status-sold-out">Sold out</span><% } else { %><span class="badge status-available">Available</span><% } %>
+            </div>
+            <div style="font-size:14px;color:var(--muted);font-weight:600;">
+              <%= item.has_variants ? 'Configured with variants' : (setting.currency || '$') + parseFloat(item.price || 0).toFixed(2) %>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <a class="btn btn-secondary" href="/menus/<%= item.id %>/edit" style="padding:6px 14px;font-size:13px;">Edit</a>
+            <form method="POST" action="/menus/<%= item.id %>/toggle-sold-out" style="display:inline;margin:0;">
+              <button type="submit" class="btn <%= item.sold_out ? '' : 'btn-secondary' %>" style="padding:6px 14px;font-size:13px;">
+                <%= item.sold_out ? '✓ Mark available' : '86 Item' %>
+              </button>
+            </form>
+            <form method="POST" action="/menus/<%= item.id %>/delete" style="display:inline;margin:0;" onsubmit="return confirm('Delete this item?');">
+              <button type="submit" class="btn btn-secondary" style="padding:6px 14px;font-size:13px;color:#be123c;">Delete</button>
+            </form>
+          </div>
         </div>
       </div>
-      <div>
-        <a class="btn" href="/menus/<%= item.id %>/edit">Edit</a>
-        <form method="POST" action="/menus/<%= item.id %>/toggle-sold-out" style="display:inline;">
-          <button type="submit" class="btn <%= item.sold_out ? '' : 'btn-secondary' %>"><%= item.sold_out ? 'Mark available' : 'Sold out' %></button>
-        </form>
-        <form method="POST" action="/menus/<%= item.id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this item?');">
-          <button type="submit" class="btn btn-secondary">Delete</button>
-        </form>
-      </div>
-    </div>
+    <% }) %>
   </div>
-<% }) %>
+<% } %>

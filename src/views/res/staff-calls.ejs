@@ -1,20 +1,49 @@
-<style>
-  .calls-header { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
-  .call-type { color:#687386; text-transform:capitalize; }
-  .calls-empty { color:#687386; text-align:center; }
-</style>
-<section class="card calls-header">
-  <div><h2>Staff calls</h2><p>Pending requests from guests at your tables.</p></div>
-  <span id="pending-count"><%= calls.length %> pending</span>
-</section>
-<section class="card" id="staff-call-list" aria-live="polite">
-  <% if (!calls.length) { %><p class="calls-empty">No pending staff calls.</p><% } %>
-  <% calls.forEach((call) => { %>
-    <div class="item-row" data-call-id="<%= call.id %>">
-      <div><strong>Table <%= call.table ? call.table.table_name : 'Unknown' %></strong><br><span class="call-type"><%= call.type %> request</span></div>
-      <button type="button" class="btn btn-secondary resolve-call" data-id="<%= call.id %>">Resolve</button>
+<section class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge" style="background:#ecfdf5;color:#059669;">● Floor Notification</span>
+      <span style="font-size:12px;color:var(--muted);">Real-time alerts from tables</span>
     </div>
-  <% }) %>
+    <h2>Guest Staff Calls</h2>
+    <p>Live assistance requests from dining guests: service assistance, drink/water refills, or table checks.</p>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span class="badge status-occupied" id="pending-count" style="font-size:13px;padding:6px 14px;"><%= calls.length %> pending call<%= calls.length === 1 ? '' : 's' %></span>
+  </div>
+</section>
+
+<section class="card" id="staff-call-list" aria-live="polite">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:12px;">
+    <h3 style="margin:0;font-size:16px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;">Active Calls Queue</h3>
+    <span style="font-size:12px;color:var(--subtle);">Auto-refreshes on incoming call</span>
+  </div>
+
+  <% if (!calls.length) { %>
+    <div style="text-align:center;padding:48px 16px;">
+      <div style="font-size:32px;margin-bottom:8px;">🔔</div>
+      <h4 style="margin:0 0 6px;">All tables attended to</h4>
+      <p style="color:var(--muted);margin:0;">No active staff calls at the moment. Guests can call using their table QR menu.</p>
+    </div>
+  <% } %>
+
+  <div style="display:grid;gap:10px;">
+    <% calls.forEach((call) => { %>
+      <div class="item-row" data-call-id="<%= call.id %>" style="background:#f8fafc;padding:14px 18px;border-radius:10px;border:1px solid var(--line);">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:40px;height:40px;border-radius:8px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-size:18px;">
+            <%= call.type === 'water' ? '💧' : (call.type === 'bill' ? '💳' : '🛎️') %>
+          </div>
+          <div>
+            <strong style="font-size:16px;color:var(--ink);">Table <%= call.table ? call.table.table_name : 'Unknown' %></strong>
+            <div style="font-size:13px;color:var(--muted);text-transform:capitalize;margin-top:2px;">
+              <%= call.type %> request &middot; <%= new Date(call.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary resolve-call" data-id="<%= call.id %>" style="min-width:110px;">✓ Mark Done</button>
+      </div>
+    <% }) %>
+  </div>
 </section>
 <script src="/socket.io/socket.io.js"></script>
 <script>

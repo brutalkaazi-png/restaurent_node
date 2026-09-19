@@ -3,73 +3,102 @@ const entries = Object.entries(cart || {});
 const subtotal = entries.reduce((sum, [, c]) => sum + c.price * c.quantity, 0);
 const deliveryCharge = parseFloat(restaurant.delivery_charge || 0);
 %>
-<div class="card">
-  <h2>Checkout</h2>
-  <p><%= restaurantName %> &middot; <%= restaurantAddress %></p>
-
-  <h4>Order summary</h4>
-  <% entries.forEach(function([key, c]) { %>
-    <div class="item-row">
-      <div><%= c.quantity %> x <%= c.name %></div>
-      <div>$<%= (c.price * c.quantity).toFixed(2) %></div>
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Secure Checkout</span>
+      <span style="font-size:12px;color:var(--muted);"><%= restaurantName %></span>
     </div>
-  <% }) %>
-  <div class="item-row"><span>Subtotal</span><span id="subtotal-display">$<%= subtotal.toFixed(2) %></span></div>
-  <div class="item-row"><span>Delivery charge</span><span id="delivery-charge-display">$<%= deliveryCharge.toFixed(2) %></span></div>
-  <div class="item-row"><strong>Total</strong><strong id="total-display">$<%= (subtotal + deliveryCharge).toFixed(2) %></strong></div>
+    <h2>Complete Your Order</h2>
+    <p><%= restaurantAddress || 'Fresh food prepared upon order confirmation.' %></p>
+  </div>
+  <div>
+    <a class="btn btn-secondary" href="/menu">← Back to Menu</a>
+  </div>
 </div>
 
-<div class="card">
-  <form id="checkout-form" method="POST" action="/store_order">
-    <input type="hidden" name="delivery_charge" id="delivery_charge_input" value="<%= deliveryCharge %>">
-    <input type="hidden" name="payment_method" id="payment_method_input" value="cod">
-    <input type="hidden" name="stripeToken" id="stripe_token_input">
-    <input type="hidden" name="total_cost" id="total_cost_input" value="<%= subtotal + deliveryCharge %>">
-
-    <label>Delivery type</label>
-    <select name="delivery_type" id="delivery_type_select">
-      <option value="pickup">Pickup</option>
-      <option value="home_delivery">Home delivery</option>
-    </select>
-
-    <div id="address-field" style="display:none;">
-      <label>Delivery address</label>
-      <input type="text" name="address" value="<%= currentUser ? (currentUser.address || '') : '' %>">
+<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:20px;align-items:start;">
+  <div class="card" style="position:sticky;top:20px;">
+    <h3 style="margin-top:0;margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:10px;font-size:17px;">Order Summary</h3>
+    <% if (!entries.length) { %>
+      <p style="color:var(--muted);text-align:center;padding:20px 0;">Your cart is empty.</p>
+    <% } %>
+    <div style="display:grid;gap:8px;margin-bottom:16px;">
+      <% entries.forEach(function([key, c]) { %>
+        <div class="item-row" style="padding:8px 0;border-bottom:1px dashed var(--line);">
+          <div>
+            <strong style="color:var(--ink);"><%= c.quantity %>x</strong> <%= c.name %>
+            <% if (c.comment) { %><div style="font-size:12px;color:var(--muted);">Note: <%= c.comment %></div><% } %>
+          </div>
+          <strong style="color:var(--ink);">$<%= (c.price * c.quantity).toFixed(2) %></strong>
+        </div>
+      <% }) %>
     </div>
+    <div class="item-row" style="padding:6px 0;"><span>Subtotal</span><span id="subtotal-display">$<%= subtotal.toFixed(2) %></span></div>
+    <div class="item-row" style="padding:6px 0;"><span>Delivery charge</span><span id="delivery-charge-display">$<%= deliveryCharge.toFixed(2) %></span></div>
+    <div class="item-row" style="padding:10px 0 0;border-top:2px solid var(--line);margin-top:6px;"><strong style="font-size:17px;">Total</strong><strong id="total-display" style="font-size:19px;color:var(--brand);">$<%= (subtotal + deliveryCharge).toFixed(2) %></strong></div>
+  </div>
 
-    <label>Preferred time (optional)</label>
-    <input type="text" name="delivery_time" placeholder="e.g. ASAP or 7:00 PM">
+  <div class="card">
+    <h3 style="margin-top:0;margin-bottom:14px;border-bottom:1px solid var(--line);padding-bottom:10px;font-size:17px;">Delivery & Contact Details</h3>
+    <form id="checkout-form" method="POST" action="/store_order">
+      <input type="hidden" name="delivery_charge" id="delivery_charge_input" value="<%= deliveryCharge %>">
+      <input type="hidden" name="payment_method" id="payment_method_input" value="cod">
+      <input type="hidden" name="stripeToken" id="stripe_token_input">
+      <input type="hidden" name="total_cost" id="total_cost_input" value="<%= subtotal + deliveryCharge %>">
 
-    <label>Name</label>
-    <input type="text" name="name" value="<%= currentUser ? currentUser.name : '' %>" required>
-
-    <label>Email</label>
-    <input type="email" name="email" value="<%= currentUser ? currentUser.email : '' %>" required>
-
-    <label>Phone</label>
-    <input type="text" name="phone" value="<%= currentUser ? currentUser.phone || '' : '' %>" required>
-
-    <% if (!currentUser) { %>
-      <label><input type="checkbox" id="create_account_cb" name="create_account" style="width:auto;display:inline-block;"> Create an account with this order</label>
-      <div id="password-fields" style="display:none;">
-        <label>Password</label>
-        <input type="password" name="password" minlength="6">
-        <label>Confirm password</label>
-        <input type="password" name="password_confirmation" minlength="6">
-      </div>
-    <% } %>
-
-    <% if (restaurant.card_payment) { %>
-      <label>Payment method</label>
-      <select id="payment_method_select">
-        <option value="cod">Cash on delivery/pickup</option>
-        <option value="card">Card</option>
+      <label>Delivery Method</label>
+      <select name="delivery_type" id="delivery_type_select">
+        <option value="pickup">Store Pickup</option>
+        <option value="home_delivery">Home Delivery</option>
       </select>
-      <p><small>Card payment requires Stripe.js on the client to tokenize the card and set #stripe_token_input before submit - not wired up in this port; cash on delivery/pickup works end-to-end.</small></p>
-    <% } %>
 
-    <button class="btn" type="submit" style="width:100%;margin-top:12px;">Place order</button>
-  </form>
+      <div id="address-field" style="display:none;">
+        <label>Delivery Address</label>
+        <input type="text" name="address" value="<%= currentUser ? (currentUser.address || '') : '' %>" placeholder="Apartment, Street, City">
+      </div>
+
+      <label>Preferred Time (optional)</label>
+      <input type="text" name="delivery_time" placeholder="e.g. ASAP or 7:00 PM">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label>Your Name</label>
+          <input type="text" name="name" value="<%= currentUser ? currentUser.name : '' %>" required placeholder="Jane Doe">
+        </div>
+        <div>
+          <label>Phone Number</label>
+          <input type="text" name="phone" value="<%= currentUser ? currentUser.phone || '' : '' %>" required placeholder="+1 (555) 000-0000">
+        </div>
+      </div>
+
+      <label>Email Address</label>
+      <input type="email" name="email" value="<%= currentUser ? currentUser.email : '' %>" required placeholder="you@example.com">
+
+      <% if (!currentUser) { %>
+        <div style="margin:14px 0 10px;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid var(--line);">
+          <label style="margin:0;cursor:pointer;"><input type="checkbox" id="create_account_cb" name="create_account" style="width:auto;display:inline-block;margin-right:6px;"> Create an account to save order history</label>
+          <div id="password-fields" style="display:none;margin-top:12px;">
+            <label>Password</label>
+            <input type="password" name="password" minlength="6" placeholder="Choose a password">
+            <label>Confirm Password</label>
+            <input type="password" name="password_confirmation" minlength="6" placeholder="Repeat password">
+          </div>
+        </div>
+      <% } %>
+
+      <% if (restaurant.card_payment) { %>
+        <label>Payment Method</label>
+        <select id="payment_method_select">
+          <option value="cod">Cash on delivery / pickup</option>
+          <option value="card">Credit / Debit Card</option>
+        </select>
+        <p style="font-size:12px;color:var(--muted);margin-top:4px;">Cash on delivery / pickup is ready and confirmed immediately.</p>
+      <% } %>
+
+      <button class="btn" type="submit" style="width:100%;margin-top:16px;padding:14px;font-size:15px;box-shadow:var(--shadow-brand);">Place Order ↗</button>
+    </form>
+  </div>
 </div>
 
 <script>

@@ -6,81 +6,146 @@
 // ported yet, so this is a single, functional default layout instead.
 %>
 <% function mediaUrl(path) { return path ? (path.startsWith('assets/') ? '/' + path : '/uploads/' + path) : ''; } %>
-<div class="card">
-  <% if (restaurant.logo) { %><img src="<%= mediaUrl(restaurant.logo) %>" alt="<%= restaurant.name %>" style="width:72px;height:48px;object-fit:cover;border-radius:8px;"> <% } %>
-  <h2><%= restaurant.name %></h2>
-  <p><%= restaurant.address %> &middot; Table: <%= table.table_name %></p>
-
-  <% if (showStartOverPrompt) { %>
-    <div class="message">
-      This table has an existing order from someone else's session.
-      <% if (canStartOver) { %>
-        <form method="POST" action="/table-menu/start-over/<%= table.id %>">
-          <button class="btn" type="submit">Start a new order</button>
-        </form>
-      <% } else { %>
-        <p>There are active items being prepared, so you can't start over yet - ask a staff member for help.</p>
-      <% } %>
+<div class="card menu-restaurant-header">
+  <% if (restaurant.logo) { %>
+    <img src="<%= mediaUrl(restaurant.logo) %>" alt="<%= restaurant.name %>" class="menu-restaurant-logo">
+  <% } else { %>
+    <div class="menu-restaurant-logo" style="display:grid;place-items:center;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;font-size:28px;font-weight:800;">✦</div>
+  <% } %>
+  <div style="flex:1;min-width:0;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
+      <span class="badge" style="background:#fef3c7;color:#b45309;font-size:12px;font-weight:800;">▦ Table <%= table.table_name %></span>
+      <span class="badge status-available">● Dine-In Service</span>
     </div>
-  <% } %>
-
-  <% if (isBillRequested) { %>
-    <div class="message">Bill already requested for this table. Please pay at the counter.</div>
-  <% } %>
+    <h2 style="font-size:24px;margin-bottom:4px;"><%= restaurant.name %></h2>
+    <p style="margin:0;color:var(--muted);font-size:13.5px;"><%= restaurant.address || 'Browse the menu and order right from your seat.' %></p>
+  </div>
 </div>
 
+<% if (showStartOverPrompt) { %>
+  <div class="card" style="border-color:#fed7aa;background:#fff7ed;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+      <span style="font-size:22px;">ℹ️</span>
+      <h3 style="margin:0;font-size:16px;color:#9a3412;">Existing Order Session</h3>
+    </div>
+    <p style="color:#9a3412;margin-bottom:12px;">This table has an existing order from someone else's session.</p>
+    <% if (canStartOver) { %>
+      <form method="POST" action="/table-menu/start-over/<%= table.id %>">
+        <button class="btn" type="submit">Start a new order</button>
+      </form>
+    <% } else { %>
+      <p style="font-size:13px;color:#c2410c;margin:0;">There are active items being prepared, so you can't start over yet - ask a staff member for help.</p>
+    <% } %>
+  </div>
+<% } %>
+
+<% if (isBillRequested) { %>
+  <div class="card alert-info">
+    <span style="font-size:20px;">💳</span>
+    <div>
+      <strong style="display:block;">Bill already requested</strong>
+      <span>A member of the team will bring your check shortly, or you may settle at the counter.</span>
+    </div>
+  </div>
+<% } %>
+
 <% if (!allMenus.length) { %>
-  <p>No menu items available.</p>
+  <div class="card" style="text-align:center;padding:48px 24px;">
+    <div style="font-size:32px;margin-bottom:12px;">🍽️</div>
+    <h3>No menu items available</h3>
+    <p style="color:var(--muted);">Please ask our staff for the printed menu.</p>
+  </div>
 <% } else { %>
   <% categories.forEach(function(cat) { %>
-    <div class="card">
-      <% if (cat.category_image) { %><img src="<%= mediaUrl(cat.category_image) %>" alt="<%= cat.category_name %>" style="width:100%;max-height:150px;object-fit:cover;border-radius:8px;"> <% } %>
-      <h3><%= cat.category_name %></h3>
-      <% allMenus.filter(function(item){ return item.item_category === cat.id }).forEach(function(item) { %>
-        <div class="item-row">
+    <% const itemsInCat = allMenus.filter(function(item){ return item.item_category === cat.id }); %>
+    <% if (itemsInCat.length) { %>
+      <div class="card menu-category-card">
+        <div class="menu-category-header">
+          <% if (cat.category_image) { %>
+            <img src="<%= mediaUrl(cat.category_image) %>" alt="<%= cat.category_name %>" class="menu-category-img">
+          <% } %>
           <div>
-            <% if (item.item_image) { %><img src="<%= mediaUrl(item.item_image) %>" alt="<%= item.item_name %>" style="width:96px;height:72px;object-fit:cover;border-radius:8px;margin-bottom:6px;"> <% } %>
-            <strong><%= item.item_name %></strong><br>
-            <% if (item.sold_out) { %><small style="color:#be123c;font-weight:700;">Sold out</small><br><% } %>
-            <small><%= item.item_description || '' %></small><br>
-            <% if (item.variants && item.variants.length) { %>
-              <small>From $<%= Math.min(...item.variants.map(v => parseFloat(v.price))).toFixed(2) %></small>
-            <% } else if (item.discounted_price !== null && item.discounted_price !== undefined) { %>
-              <small><s>$<%= parseFloat(item.price).toFixed(2) %></s> <strong style="color:#28a745;">$<%= item.discounted_price.toFixed(2) %></strong> (<%= item.active_discount.discount_percentage %>% off now)</small>
-            <% } else { %>
-              <small>$<%= parseFloat(item.price).toFixed(2) %></small>
+            <h3 style="margin:0;font-size:18px;"><%= cat.category_name %></h3>
+            <% if (cat.category_description) { %>
+              <p style="margin:2px 0 0;font-size:12.5px;color:var(--muted);"><%= cat.category_description %></p>
             <% } %>
           </div>
-          <button class="btn add-item-btn" data-item-id="<%= item.id %>" <%= item.sold_out ? 'disabled aria-label="Sold out"' : '' %>><%= item.sold_out ? 'Sold out' : 'Add' %></button>
         </div>
-      <% }) %>
-    </div>
+
+        <div style="display:grid;gap:12px;">
+          <% itemsInCat.forEach(function(item) { %>
+            <div class="dish-card">
+              <div class="dish-info">
+                <% if (item.item_image) { %>
+                  <img src="<%= mediaUrl(item.item_image) %>" alt="<%= item.item_name %>" class="dish-img">
+                <% } %>
+                <div class="dish-details">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
+                    <strong class="dish-title"><%= item.item_name %></strong>
+                    <% if (item.is_drink) { %><span class="badge" style="background:#eff6ff;color:#1d4ed8;">Drink</span><% } %>
+                    <% if (item.sold_out) { %><span class="badge status-sold-out">Sold out</span><% } %>
+                    <% if (item.active_discount && item.active_discount.discount_percentage) { %>
+                      <span class="badge status-available"><%= item.active_discount.discount_percentage %>% OFF</span>
+                    <% } %>
+                  </div>
+                  <% if (item.item_description) { %>
+                    <div class="dish-desc"><%= item.item_description %></div>
+                  <% } %>
+                  <div class="dish-price">
+                    <% if (item.variants && item.variants.length) { %>
+                      <span style="color:var(--ink-secondary);font-size:13px;font-weight:600;">From </span>$<%= Math.min(...item.variants.map(v => parseFloat(v.price))).toFixed(2) %>
+                    <% } else if (item.discounted_price !== null && item.discounted_price !== undefined) { %>
+                      <s style="color:var(--subtle);font-weight:400;margin-right:6px;">$<%= parseFloat(item.price).toFixed(2) %></s>
+                      <strong class="dish-price-discount">$<%= item.discounted_price.toFixed(2) %></strong>
+                    <% } else { %>
+                      $<%= parseFloat(item.price).toFixed(2) %>
+                    <% } %>
+                  </div>
+                </div>
+              </div>
+              <button class="btn add-item-btn" data-item-id="<%= item.id %>" <%= item.sold_out ? 'disabled aria-label="Sold out"' : '' %> style="<%= item.sold_out ? '' : 'min-width:96px;' %>">
+                <%= item.sold_out ? 'Sold out' : '+ Add' %>
+              </button>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    <% } %>
   <% }) %>
 <% } %>
 
-<div class="card" id="cart-summary">
-  <a class="btn" href="#" id="view-cart-btn">View cart</a>
+<div class="cart-summary-bar" id="cart-summary">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span style="font-size:20px;">🍽️</span>
+    <div>
+      <strong style="display:block;font-size:14px;color:var(--ink);">Table Tab</strong>
+      <span style="font-size:12px;color:var(--muted);">Add items to confirm to kitchen</span>
+    </div>
+  </div>
+  <a class="btn" href="#" id="view-cart-btn" style="box-shadow:var(--shadow-brand);">View cart ↗</a>
 </div>
 
-<div class="card">
-  <h3>Need help?</h3>
-  <p>Ask the restaurant team for assistance.</p>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <button type="button" class="btn staff-call-btn" data-type="general">Call staff</button>
-    <button type="button" class="btn btn-secondary staff-call-btn" data-type="water">Request water</button>
-    <button type="button" class="btn btn-secondary staff-call-btn" data-type="bill">Request bill</button>
+<div class="card" style="margin-top:28px;">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+    <span style="font-size:20px;">🛎️</span>
+    <h3 style="margin:0;">Need assistance?</h3>
   </div>
-  <p id="staff-call-message" role="status" aria-live="polite"></p>
+  <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px;">Notify your floor server with one tap:</p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <button type="button" class="btn staff-call-btn" data-type="general">🔔 Call staff</button>
+    <button type="button" class="btn btn-secondary staff-call-btn" data-type="water">💧 Request water</button>
+    <button type="button" class="btn btn-secondary staff-call-btn" data-type="bill">💳 Request bill</button>
+  </div>
+  <p id="staff-call-message" role="status" aria-live="polite" style="margin-top:12px;font-size:13px;font-weight:600;color:var(--brand);"></p>
 </div>
 
 <script>
-  // Minimal wiring for add-to-cart / cart refresh against the ported
-  // TableMenuController endpoints. Extend this with the original
-  // front-end's variant/topping picker modal as you port that UI.
   const tableId = <%= table.id %>;
 
   document.querySelectorAll('.staff-call-btn').forEach((button) => button.addEventListener('click', async () => {
     button.disabled = true;
+    const origText = button.textContent;
+    button.textContent = 'Sending...';
     const message = document.getElementById('staff-call-message');
     try {
       const response = await fetch(`/staff-call/${tableId}`, {
@@ -91,15 +156,21 @@
       const contentType = response.headers.get('content-type') || '';
       const data = contentType.includes('application/json') ? await response.json() : { message: 'Staff call could not be sent.' };
       message.textContent = data.message || 'Staff call could not be sent.';
+      button.textContent = origText;
       if (!response.ok) button.disabled = false;
     } catch (error) {
       message.textContent = 'Unable to contact the restaurant. Please try again.';
+      button.textContent = origText;
       button.disabled = false;
     }
   }));
 
   document.querySelectorAll('.add-item-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      const orig = btn.textContent;
+      btn.textContent = 'Adding...';
+      btn.disabled = true;
+
       fetch('/add-table-menu', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,7 +180,18 @@
         }),
       })
         .then(r => r.json())
-        .then(() => refreshCart());
+        .then(() => {
+          btn.textContent = '✓ Added';
+          setTimeout(() => {
+            btn.textContent = orig;
+            btn.disabled = false;
+          }, 900);
+          refreshCart();
+        })
+        .catch(() => {
+          btn.textContent = orig;
+          btn.disabled = false;
+        });
     });
   });
 
@@ -118,7 +200,14 @@
       .then(r => r.json())
       .then(data => {
         document.getElementById('cart-summary').innerHTML =
-          '<a class="btn" href="#" id="view-cart-btn">View cart (' + data.all_orders_count + ') - $' + data.total.toFixed(2) + '</a>';
+          '<div style="display:flex;align-items:center;gap:12px;">' +
+            '<span style="font-size:20px;">🍽️</span>' +
+            '<div>' +
+              '<strong style="display:block;font-size:14px;color:var(--ink);">' + data.all_orders_count + ' items on order</strong>' +
+              '<span style="font-size:12px;color:var(--muted);">Total: $' + data.total.toFixed(2) + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<a class="btn" href="#" id="view-cart-btn" style="box-shadow:var(--shadow-brand);">View cart (' + data.all_orders_count + ') - $' + data.total.toFixed(2) + ' ↗</a>';
       });
   }
 </script>

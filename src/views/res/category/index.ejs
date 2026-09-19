@@ -1,28 +1,44 @@
-<div class="card">
-  <div class="item-row">
-    <h2>Categories</h2>
-    <a class="btn" href="/categories/create">+ Add category</a>
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Menu Organization</span>
+      <span style="font-size:12px;color:var(--muted);">Courses & Sections</span>
+    </div>
+    <h2>Menu Categories</h2>
+    <p>Group dishes into intuitive courses (Starters, Mains, Desserts, Beverages) to streamline ordering.</p>
   </div>
+  <a class="btn" href="/categories/create">+ Add category</a>
 </div>
 
 <% if (!categories.length) { %>
-  <div class="card">No categories yet.</div>
-<% } %>
-
-<% categories.forEach(function(cat) { %>
-  <div class="card">
-    <div class="item-row">
-      <div>
-        <strong><%= cat.category_name %></strong>
-        <div style="font-size:0.85em;color:#777;"><%= cat.item_count %> item(s)</div>
-        <% if (cat.category_description) { %><div style="font-size:0.9em;"><%= cat.category_description %></div><% } %>
-      </div>
-      <div>
-        <a class="btn" href="/categories/<%= cat.id %>/edit">Edit</a>
-        <form method="POST" action="/categories/<%= cat.id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this category?');">
-          <button type="submit" class="btn btn-secondary">Delete</button>
-        </form>
-      </div>
-    </div>
+  <div class="card" style="text-align:center;padding:48px 20px;">
+    <div style="font-size:32px;margin-bottom:8px;">◫</div>
+    <h3 style="margin:0 0 6px;">No categories created</h3>
+    <p style="color:var(--muted);margin:0 0 16px;">Create your first category before adding dishes to the menu.</p>
+    <a class="btn" href="/categories/create">+ Add First Category</a>
   </div>
-<% }) %>
+<% } else { %>
+  <div style="display:grid;gap:12px;">
+    <% categories.forEach(function(cat) { %>
+      <div class="card" style="margin:0;padding:18px 22px;">
+        <div class="item-row">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <strong style="font-size:17px;color:var(--ink);"><%= cat.category_name %></strong>
+              <span class="badge" style="font-size:12px;"><%= cat.item_count %> item<%= cat.item_count === 1 ? '' : 's' %></span>
+            </div>
+            <% if (cat.category_description) { %>
+              <div style="font-size:13.5px;color:var(--muted);margin-top:4px;"><%= cat.category_description %></div>
+            <% } %>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <a class="btn btn-secondary" href="/categories/<%= cat.id %>/edit" style="padding:6px 14px;font-size:13px;">Edit</a>
+            <form method="POST" action="/categories/<%= cat.id %>/delete" style="display:inline;margin:0;" onsubmit="return confirm('Delete this category?');">
+              <button type="submit" class="btn btn-secondary" style="padding:6px 14px;font-size:13px;color:#be123c;">Delete</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+<% } %>

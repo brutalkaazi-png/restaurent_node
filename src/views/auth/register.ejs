@@ -1,50 +1,71 @@
-<div class="card">
-  <h2>Register your restaurant</h2>
+<div class="card" style="max-width:560px;margin:32px auto;padding:32px 28px;box-shadow:var(--shadow-md);">
+  <div style="text-align:center;margin-bottom:24px;">
+    <div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:12px;background:var(--brand);color:#ffffff;font-size:24px;margin-bottom:12px;box-shadow:var(--shadow-brand);">✦</div>
+    <h2 style="font-size:24px;margin:0 0 6px;">Register Your Restaurant</h2>
+    <p style="margin:0;font-size:13.5px;color:var(--muted);">Set up your digital QR menus, online orders, and kitchen pass.</p>
+  </div>
+
   <% if (typeof errors !== 'undefined' && errors && errors.length) { %>
-    <div class="message"><% errors.forEach(function(e){ %><div><%= e %></div><% }) %></div>
+    <div class="message" style="margin-bottom:16px;">
+      <% errors.forEach(function(e){ %><div>• <%= e %></div><% }) %>
+    </div>
   <% } %>
+
   <form method="POST" action="/register/store" enctype="multipart/form-data">
-    <label>Restaurant / Business name</label>
-    <input type="text" name="name" required>
+    <label>Restaurant / Business Name</label>
+    <input type="text" name="name" required placeholder="e.g. Bella Italia Trattoria">
 
-    <label>Custom URL slug (optional)</label>
-    <input type="text" name="slug">
+    <label>Custom URL Slug (optional)</label>
+    <input type="text" name="slug" placeholder="e.g. bella-italia">
 
-    <label>City / District</label>
-    <select name="city">
-      <% districts.forEach(function(d){ %>
-        <option value="<%= d.name %>"><%= d.name %></option>
-      <% }) %>
-    </select>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div>
+        <label>City / District</label>
+        <select name="city">
+          <% districts.forEach(function(d){ %>
+            <option value="<%= d.name %>"><%= d.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label>Phone Number</label>
+        <input type="text" name="phone" placeholder="+1 (555) 000-0000">
+      </div>
+    </div>
 
     <label>Address</label>
-    <input type="text" name="address">
+    <input type="text" name="address" placeholder="Street address, Suite">
 
     <input type="hidden" name="latitude" value="">
     <input type="hidden" name="longitude" value="">
 
-    <label>Phone</label>
-    <input type="text" name="phone">
+    <label>Owner Email Address</label>
+    <input type="email" name="email" required placeholder="owner@restaurant.com">
 
-    <label>Email</label>
-    <input type="email" name="email" required>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div>
+        <label>Password</label>
+        <input type="password" name="password" required minlength="6" placeholder="At least 6 chars">
+      </div>
+      <div>
+        <label>Confirm Password</label>
+        <input type="password" name="password_confirmation" required minlength="6" placeholder="Repeat password">
+      </div>
+    </div>
 
-    <label>Password</label>
-    <input type="password" name="password" required minlength="6">
-
-    <label>Confirm password</label>
-    <input type="password" name="password_confirmation" required minlength="6">
-
-    <label>Account type</label>
+    <label>Account Type</label>
     <select name="user_type">
-      <option value="R">Restaurant owner</option>
-      <option value="C">Customer</option>
+      <option value="R">Restaurant Owner (Full Management)</option>
+      <option value="C">Customer Account (Ordering Only)</option>
     </select>
 
     <input type="hidden" name="restaurant_type" value="">
     <input type="hidden" name="remark" value="">
 
-    <button class="btn" type="submit">Register</button>
+    <button class="btn" type="submit" style="width:100%;margin-top:16px;padding:12px;font-size:15px;box-shadow:var(--shadow-brand);">Create Restaurant Account ↗</button>
   </form>
-  <p><a href="/login">Already have an account? Log in</a></p>
+
+  <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted);">
+    Already have an account? <a href="/login" style="color:var(--brand);font-weight:600;text-decoration:none;">Log in here</a>
+  </div>
 </div>

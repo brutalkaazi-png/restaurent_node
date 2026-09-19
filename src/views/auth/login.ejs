@@ -1,15 +1,54 @@
-<div class="card">
-  <h2>Log in</h2>
+<div class="card" style="max-width:460px;margin:32px auto;padding:32px 28px;box-shadow:var(--shadow-md);">
+  <div style="text-align:center;margin-bottom:24px;">
+    <div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:12px;background:var(--brand);color:#ffffff;font-size:24px;margin-bottom:12px;box-shadow:var(--shadow-brand);">✦</div>
+    <h2 style="font-size:24px;margin:0 0 6px;">Sign In to Restro</h2>
+    <p style="margin:0;font-size:13.5px;color:var(--muted);">Access your POS terminal, kitchen pass, and orders.</p>
+  </div>
+
   <% if (typeof message !== 'undefined' && message) { %>
-    <div class="message"><%= message %></div>
+    <div class="message" style="margin-bottom:16px;"><%= message %></div>
   <% } %>
-  <form method="POST" action="/login">
-    <label>Email</label>
-    <input type="email" name="email" required>
+
+  <form method="POST" action="/login" id="loginForm">
+    <label>Email Address</label>
+    <input type="email" id="emailInput" name="email" required value="demo.owner@restaurant.local" placeholder="you@restaurant.com">
+
     <label>Password</label>
-    <input type="password" name="password" required>
-    <label><input type="checkbox" name="remember" style="width:auto;display:inline-block;"> Remember me</label>
-    <button class="btn" type="submit">Log in</button>
+    <input type="password" id="passwordInput" name="password" required value="password123" placeholder="••••••••">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 18px;">
+      <label style="margin:0;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" name="remember" style="width:auto;margin:0;"> Remember me
+      </label>
+      <a href="/register" style="font-size:13px;color:var(--brand);text-decoration:none;">New restaurant?</a>
+    </div>
+
+    <button class="btn" type="submit" style="width:100%;padding:12px;font-size:15px;box-shadow:var(--shadow-brand);">Sign In to Dashboard ↗</button>
   </form>
-  <p><a href="/register">Register a restaurant</a></p>
+
+  <div style="margin-top:24px;padding:16px;background:#f8fafc;border:1px solid var(--line);border-radius:10px;font-size:13px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <strong style="color:var(--ink);font-size:12px;text-transform:uppercase;letter-spacing:0.04em;">Demo Role Access</strong>
+      <span style="font-size:11px;color:var(--muted);">Click to autofill:</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      <button type="button" class="btn btn-secondary" style="font-size:12px;padding:7px 10px;" onclick="fillLogin('demo.owner@restaurant.local')">👑 Owner</button>
+      <button type="button" class="btn btn-secondary" style="font-size:12px;padding:7px 10px;" onclick="fillLogin('demo.superadmin@restaurant.local')">⚡ Super Admin</button>
+      <button type="button" class="btn btn-secondary" style="font-size:12px;padding:7px 10px;" onclick="fillLogin('demo.kitchen@restaurant.local')">👨‍🍳 Kitchen Pass</button>
+      <button type="button" class="btn btn-secondary" style="font-size:12px;padding:7px 10px;" onclick="fillLogin('demo.counter@restaurant.local')">💳 Counter POS</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+      <span>Direct Guest Previews:</span>
+      <a href="/demo-restaurant/menu" target="_blank" style="color:var(--brand);font-weight:600;text-decoration:none;">Online Menu ↗</a>
+      <span>&middot;</span>
+      <a href="/demo-restaurant/menu/demo-table-1" target="_blank" style="color:var(--brand);font-weight:600;text-decoration:none;">Table QR ↗</a>
+    </div>
+  </div>
 </div>
+
+<script>
+  function fillLogin(email) {
+    document.getElementById('emailInput').value = email;
+    document.getElementById('passwordInput').value = 'password123';
+  }
+</script>

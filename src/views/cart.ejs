@@ -2,30 +2,52 @@
 const entries = Object.entries(cart || {});
 const total = entries.reduce((sum, [, c]) => sum + c.price * c.quantity, 0);
 %>
-<div class="card">
-  <h3>Your cart</h3>
-  <p><%= restaurantName %> &middot; <%= restaurantAddress %></p>
-
-  <% if (!entries.length) { %>
-    <p class="text-muted">Your cart is empty.</p>
-  <% } %>
-
-  <% entries.forEach(function([key, c]) { %>
-    <div class="item-row">
-      <div>
-        <%= c.quantity %> x <%= c.name %>
-        <% if (c.comment) { %><br><small>Note: <%= c.comment %></small><% } %>
-        <% if (c.toppings && c.toppings.length) { %><br><small>+ <%= c.toppings.map(t => t.name).join(', ') %></small><% } %>
-      </div>
-      <div>
-        $<%= (c.price * c.quantity).toFixed(2) %>
-        <button type="button" class="cart-remove-btn" data-key="<%= key %>">&times;</button>
-      </div>
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Shopping Bag</span>
+      <span style="font-size:12px;color:var(--muted);"><%= restaurantName %></span>
     </div>
-  <% }) %>
+    <h2>Your Cart</h2>
+    <p><%= restaurantAddress %></p>
+  </div>
+  <div>
+    <a class="btn btn-secondary" href="/menu">← Continue Shopping</a>
+  </div>
+</div>
 
-  <% if (entries.length) { %>
-    <div class="item-row"><strong>Total</strong><strong><%= total.toFixed(2) %></strong></div>
+<div class="card" style="max-width:720px;margin:0 auto;">
+  <% if (!entries.length) { %>
+    <div style="text-align:center;padding:40px 16px;">
+      <div style="font-size:32px;margin-bottom:10px;">🛍️</div>
+      <h3 style="margin:0 0 6px;">Your cart is empty</h3>
+      <p style="color:var(--muted);margin:0 0 16px;">Explore our chef specials and beverages to add items.</p>
+      <a class="btn" href="/menu">Browse Menu</a>
+    </div>
+  <% } else { %>
+    <div style="display:grid;gap:12px;">
+      <% entries.forEach(function([key, c]) { %>
+        <div class="item-row" style="background:#f8fafc;padding:12px 16px;border-radius:10px;border:1px solid var(--line);">
+          <div>
+            <strong style="font-size:15px;color:var(--ink);"><%= c.quantity %>x <%= c.name %></strong>
+            <% if (c.comment) { %><div style="font-size:12px;color:var(--muted);margin-top:2px;">Note: <%= c.comment %></div><% } %>
+            <% if (c.toppings && c.toppings.length) { %><div style="font-size:12px;color:var(--muted);margin-top:2px;">+ <%= c.toppings.map(t => t.name).join(', ') %></div><% } %>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;">
+            <strong style="font-size:16px;color:var(--ink);">$<%= (c.price * c.quantity).toFixed(2) %></strong>
+            <button type="button" class="btn btn-secondary cart-remove-btn" data-key="<%= key %>" title="Remove item" style="padding:4px 10px;font-size:14px;color:#be123c;">✕</button>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);">
+      <div class="item-row" style="margin-bottom:16px;">
+        <span style="font-size:16px;color:var(--muted);">Subtotal</span>
+        <strong style="font-size:20px;color:var(--brand);">$<%= total.toFixed(2) %></strong>
+      </div>
+      <a class="btn" href="/checkout" style="display:block;text-align:center;padding:13px;font-size:15px;box-shadow:var(--shadow-brand);">Proceed to Checkout ↗</a>
+    </div>
   <% } %>
 </div>
 

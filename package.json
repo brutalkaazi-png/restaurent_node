@@ -6,7 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js",
+    "dev": "node server.js",
+    "build": "echo 'Build complete'",
     "test": "node --test --test-concurrency=1 tests/*.test.js"
   },
   "dependencies": {
@@ -21,7 +22,8 @@
     "multer": "^2.0.0",
     "mysql2": "^3.10.0",
     "sequelize": "^6.37.3",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "sqlite3": "5.1.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.4",

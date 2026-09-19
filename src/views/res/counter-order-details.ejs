@@ -1,26 +1,39 @@
-<div class="card">
-  <h3>Table #<%= id %> orders</h3>
-  <% if (!groupedOrders.length) { %>
-    <p>No active items for this table.</p>
-  <% } %>
-  <% groupedOrders.forEach(function(g) { %>
-    <div class="item-row">
-      <div>
-        <%= g.item ? g.item.item_name : 'Item' %> x<%= g.quantity %>
-        <% if (g.variant) { %> (<%= g.variant.name %>)<% } %>
-        <% if (g.remarks) { %><br><small>Note: <%= g.remarks %></small><% } %>
-      </div>
-      <div>
-        <span class="item-status"><%= g.status %></span><br>
-        <button type="button" class="update-order-btn" data-ids="<%= g.sub_order_ids %>" data-status="order_delivered">Mark delivered</button>
-      </div>
+<div class="card" style="border:1.5px solid var(--brand-border);box-shadow:var(--shadow-md);">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:12px;">
+    <div>
+      <h3 style="margin:0;font-size:18px;">Active Orders for Table #<%= id %></h3>
+      <span style="font-size:12.5px;color:var(--muted);">Review live kitchen progress and guest tickets</span>
     </div>
-  <% }) %>
-</div>
+    <span class="badge status-occupied">● Active Session</span>
+  </div>
 
-<div style="margin-top:12px;">
-  <a class="btn" href="/counter-admin/make_bill/<%= id %>" target="_blank">Prepare bill</a>
-  <button type="button" class="btn btn-secondary" id="cancel-table-btn" data-table-id="<%= id %>">Cancel table</button>
+  <% if (!groupedOrders.length) { %>
+    <p style="color:var(--muted);text-align:center;padding:24px 0;">No active items currently on order for this table.</p>
+  <% } %>
+
+  <div style="display:grid;gap:8px;">
+    <% groupedOrders.forEach(function(g) { %>
+      <div class="item-row" style="background:#f8fafc;padding:12px 14px;border-radius:8px;border:1px solid var(--line);">
+        <div>
+          <strong style="font-size:15px;color:var(--ink);"><%= g.item ? g.item.item_name : 'Item' %></strong>
+          <span class="badge" style="margin-left:6px;font-size:12px;">x<%= g.quantity %></span>
+          <% if (g.variant) { %><span style="font-size:12.5px;color:var(--muted);margin-left:4px;">(<%= g.variant.name %>)</span><% } %>
+          <% if (g.remarks) { %><div style="font-size:12.5px;color:#d97706;margin-top:2px;">Note: <%= g.remarks %></div><% } %>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="badge status-available" style="text-transform:capitalize;"><%= g.status.replaceAll('_', ' ') %></span>
+          <% if (g.status !== 'order_delivered') { %>
+            <button type="button" class="btn btn-secondary update-order-btn" data-ids="<%= g.sub_order_ids %>" data-status="order_delivered" style="padding:6px 12px;font-size:12px;">Mark delivered</button>
+          <% } %>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+
+  <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
+    <button type="button" class="btn btn-secondary" id="cancel-table-btn" data-table-id="<%= id %>">Void / Cancel Table</button>
+    <a class="btn" href="/counter-admin/make_bill/<%= id %>" target="_blank">Prepare Guest Bill ↗</a>
+  </div>
 </div>
 
 <script>

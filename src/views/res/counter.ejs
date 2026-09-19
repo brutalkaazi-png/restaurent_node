@@ -1,32 +1,50 @@
-<style>
-  #table-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
-  .table-card { margin:0; } .table-card[data-status="available"] { border-color:#86efac; }
-  .table-card[data-status="occupied"],.table-card[data-status="ordered"] { border-color:#fbbf24; }
-  .table-card[data-status="preparing"] { border-color:#fb923c; } .table-card[data-status="served"] { border-color:#60a5fa; }
-  .table-status { text-transform:capitalize; } .table-elapsed { color:#687386; font-size:12px; }
-  .counter-empty { color:#687386; text-align:center; }
-</style>
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Counter & POS Terminal</span>
+      <span style="font-size:12px;color:var(--muted);"><%= restaurant.name %></span>
+    </div>
+    <h2>Live Floor & Billing</h2>
+    <p>Select any active dining table to review orders, print guest check, or process settlement.</p>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <a class="btn btn-secondary" href="/kitchen-admin/kitchen" target="_blank">Open KDS ↗</a>
+    <a class="btn btn-secondary" href="/staff-calls">Staff Calls</a>
+  </div>
+</div>
 
-<div class="card">
-  <h2><%= restaurant.name %> - Counter</h2>
-  <p>Live table status and open-order billing.</p>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+  <h3 style="margin:0;font-size:16px;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);">Dining Tables (<%= tables.length %>)</h3>
+  <span style="font-size:12px;color:var(--subtle);">Real-time socket synchronized</span>
 </div>
 
 <div id="table-grid">
-  <% if (!tables.length) { %><div class="card counter-empty" role="status">No tables have been configured.</div><% } %>
+  <% if (!tables.length) { %>
+    <div class="card counter-empty" role="status" style="grid-column:1/-1;padding:48px 20px;text-align:center;">
+      <div style="font-size:32px;margin-bottom:8px;">▦</div>
+      <h3 style="margin:0 0 6px;">No tables configured</h3>
+      <p style="color:var(--muted);margin:0 0 16px;">Set up dining tables and generate QR codes in Table Setup.</p>
+      <a class="btn" href="/tables/create">+ Add First Table</a>
+    </div>
+  <% } %>
   <% tables.forEach(function(table) { %>
     <div class="card table-card" data-table-id="<%= table.id %>" data-status="<%= table.status %>">
-      <div class="item-row">
-        <strong><%= table.table_name %></strong>
-        <span class="item-status table-status"><%= table.status %></span>
+      <div class="item-row" style="margin-bottom:10px;">
+        <div>
+          <strong style="font-size:17px;display:block;"><%= table.table_name %></strong>
+          <span style="font-size:12px;color:var(--muted);">Table #<%= table.id %></span>
+        </div>
+        <span class="item-status table-status badge <%= table.status === 'available' ? 'status-available' : 'status-occupied' %>"><%= table.status.replaceAll('_', ' ') %></span>
       </div>
-      <div class="table-elapsed" data-start-time><%= table.status === 'available' ? 'Ready for guests' : 'Updating...' %></div>
-      <button type="button" class="btn view-table-btn" data-table-id="<%= table.id %>">View orders</button>
+      <div class="table-elapsed" data-start-time style="font-size:12.5px;color:var(--muted);margin-bottom:14px;">
+        <%= table.status === 'available' ? 'Ready for guests' : 'Active dining' %>
+      </div>
+      <button type="button" class="btn view-table-btn" data-table-id="<%= table.id %>" style="width:100%;">View orders</button>
     </div>
   <% }) %>
 </div>
 
-<div id="table-orders-panel"></div>
+<div id="table-orders-panel" style="margin-top:24px;"></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>

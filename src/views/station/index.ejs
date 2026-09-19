@@ -8,73 +8,66 @@ function statusLabel(status) {
 
 const categories = [...new Set(activeOrders.map((order) => order.item && order.item.category ? order.item.category.category_name : 'Uncategorized'))].sort();
 %>
-<style>
-  .station-hero { background:#172033; color:#fff; }
-  .station-hero p { color:#b8c3d6; margin-bottom:0; }
-  .station-toolbar { display:flex; align-items:end; justify-content:space-between; gap:16px; flex-wrap:wrap; }
-  .station-toolbar label { color:#d7dfec; }
-  .station-toolbar select { width:auto; min-width:180px; margin:6px 0 0; background:#26334b; border-color:#50607b; color:#fff; }
-  .ticket-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
-  .ticket { display:flex; flex-direction:column; min-height:250px; padding:18px; background:#202c42; color:#f8fafc; border:2px solid #33445f; border-radius:12px; box-shadow:0 10px 20px rgba(15,23,42,.16); }
-  .ticket[hidden] { display:none; }
-  .ticket-head,.ticket-foot,.ticket-line { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-  .ticket-head { align-items:start; padding-bottom:14px; border-bottom:1px solid #3d4d66; }
-  .ticket h3 { margin:0; color:#fff; font-size:18px; }
-  .ticket-meta,.ticket-note { color:#b8c3d6; font-size:13px; }
-  .elapsed { flex:0 0 auto; padding:5px 8px; border-radius:999px; color:#102014; background:#86efac; font-size:12px; font-weight:800; }
-  .ticket.urgent-warn { border-color:#fbbf24; } .ticket.urgent-warn .elapsed { background:#fbbf24; }
-  .ticket.urgent-danger { border-color:#f87171; } .ticket.urgent-danger .elapsed { background:#f87171; color:#3b0a0a; }
-  .ticket-lines { flex:1; padding:12px 0; } .ticket-line { padding:7px 0; border-bottom:1px solid #33445f; }
-  .ticket-line:last-child { border-bottom:0; } .ticket-line strong { color:#fff; } .ticket-note { margin:4px 0 0; }
-  .ticket-actions { display:flex; flex-wrap:wrap; gap:8px; } .ticket button { border:0; border-radius:7px; padding:8px 10px; color:#fff; background:#f97316; cursor:pointer; font-weight:700; }
-  .ticket button:hover { background:#fb923c; } .ticket button.secondary { background:#475569; } .ticket button.sold-out { background:#be123c; }
-  .empty-state { text-align:center; color:#687386; }
-  @media (max-width:520px) { .ticket-grid { grid-template-columns:1fr; } .station-toolbar select { width:100%; } }
-</style>
 
 <section class="card station-hero">
   <div class="station-toolbar">
     <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <span class="badge" style="background:#334155;color:#f8fafc;font-size:11px;">● LIVE KDS PASS</span>
+        <span style="font-size:12px;color:#94a3b8;"><%= station === 'bar' ? 'Drinks Station' : 'Kitchen Station' %></span>
+      </div>
       <h2><%= station === 'bar' ? 'Bar' : 'Kitchen' %> ticket board</h2>
-      <p>Incoming tickets update live. Status changes are shared with the counter.</p>
+      <p>Incoming tickets update live. Status changes are automatically synchronized with counter cashier.</p>
     </div>
-    <label for="station-category">Filter category
-      <select id="station-category" aria-label="Filter kitchen tickets by category">
-        <option value="all">All categories</option>
-        <% categories.forEach((category) => { %><option value="<%= category %>"><%= category %></option><% }) %>
-      </select>
-    </label>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <label for="station-category" style="margin:0;color:#cbd5e1;font-size:12px;font-weight:600;">Filter course:
+        <select id="station-category" aria-label="Filter kitchen tickets by category" style="margin:4px 0 0;display:block;">
+          <option value="all">All categories</option>
+          <% categories.forEach((category) => { %><option value="<%= category %>"><%= category %></option><% }) %>
+        </select>
+      </label>
+    </div>
   </div>
 </section>
 
 <% if (!activeOrders.length) { %>
-  <section class="card empty-state" role="status"><h3>No active tickets</h3><p>New orders will appear here automatically.</p></section>
+  <section class="card" style="text-align:center;padding:56px 20px;" role="status">
+    <div style="font-size:36px;margin-bottom:12px;">👨‍🍳</div>
+    <h3 style="margin:0 0 6px;">All tickets clear</h3>
+    <p style="color:var(--muted);margin:0;">No orders are currently waiting. New guest orders will appear automatically.</p>
+  </section>
 <% } else { %>
   <section class="ticket-grid" aria-label="Active kitchen tickets">
     <% activeOrders.forEach((order) => {
       const category = order.item && order.item.category ? order.item.category.category_name : 'Uncategorized';
       const canAdvance = !['cancelled', 'order_delivered'].includes(order.status);
       const nextAction = order.status === 'preparing' ? 'order_delivered' : 'preparing';
-      const nextLabel = order.status === 'preparing' ? 'Mark ready' : 'Start cooking';
+      const nextLabel = order.status === 'preparing' ? '✓ Mark ready' : '▶ Start cooking';
       const toppings = Array.isArray(order.toppings) ? order.toppings.map((topping) => topping.name || topping).join(', ') : '';
     %>
       <article class="ticket" data-category="<%= category %>" data-created-at="<%= new Date(order.created_at).toISOString() %>">
         <div class="ticket-head">
-          <div><h3>Table <%= order.table ? order.table.table_name : 'Unknown' %></h3><div class="ticket-meta">Ticket #<%= order.id %> · <%= statusLabel(order.status) %></div></div>
+          <div>
+            <h3>Table <%= order.table ? order.table.table_name : 'Unknown' %></h3>
+            <div class="ticket-meta">Ticket #<%= order.id %> · <span style="font-weight:700;color:#ffffff;"><%= statusLabel(order.status) %></span></div>
+          </div>
           <span class="elapsed" data-elapsed>0m</span>
         </div>
         <div class="ticket-lines">
-          <div class="ticket-line"><strong><%= order.item ? order.item.item_name : 'Item #' + order.item_id %></strong><span>x<%= order.quantity %></span></div>
-          <% if (order.variant) { %><div class="ticket-note">Option: <%= order.variant.name %></div><% } %>
+          <div class="ticket-line">
+            <strong><%= order.item ? order.item.item_name : 'Item #' + order.item_id %></strong>
+            <span class="badge" style="background:#334155;color:#ffffff;font-size:13px;font-weight:800;">x<%= order.quantity %></span>
+          </div>
+          <% if (order.variant) { %><div class="ticket-note">Option: <strong><%= order.variant.name %></strong></div><% } %>
           <% if (toppings) { %><div class="ticket-note">Toppings: <%= toppings %></div><% } %>
-          <% if (order.remarks) { %><div class="ticket-note">Note: <%= order.remarks %></div><% } %>
+          <% if (order.remarks) { %><div class="ticket-note" style="color:#fdba74;font-weight:600;">Note: "<%= order.remarks %>"</div><% } %>
         </div>
         <div class="ticket-foot">
           <div class="ticket-actions">
             <% if (canAdvance) { %><button type="button" class="order-action-btn" data-id="<%= order.id %>" data-action="<%= nextAction %>"><%= nextLabel %></button><% } %>
             <% if (order.status !== 'cancelled') { %><button type="button" class="order-action-btn secondary" data-id="<%= order.id %>" data-action="cancelled">Cancel</button><% } %>
           </div>
-          <% if (order.item) { %><button type="button" class="sold-out" data-item-id="<%= order.item.id %>" aria-label="Toggle sold out for <%= order.item.item_name %>"><%= order.item.sold_out ? 'Mark available' : 'Sold out' %></button><% } %>
+          <% if (order.item) { %><button type="button" class="sold-out" data-item-id="<%= order.item.id %>" aria-label="Toggle sold out for <%= order.item.item_name %>"><%= order.item.sold_out ? 'Available' : '86 Item' %></button><% } %>
         </div>
       </article>
     <% }) %>
@@ -82,9 +75,23 @@ const categories = [...new Set(activeOrders.map((order) => order.item && order.i
 <% } %>
 
 <section class="card">
-  <h3>Finished today (<%= finishedOrdersToday.count %>)</h3>
-  <% if (!finishedOrdersToday.rows.length) { %><p class="empty-state">No finished tickets yet.</p><% } else { %>
-    <% finishedOrdersToday.rows.forEach((row) => { %><div class="item-row"><span><%= row.table ? row.table.table_name : 'Unknown table' %> · <%= row.item ? row.item.item_name : 'Item #' + row.item_id %> x<%= row.quantity %></span><span><%= statusLabel(row.status) %></span></div><% }) %>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <h3 style="margin:0;">Finished tickets today</h3>
+    <span class="badge" style="font-size:12px;"><%= finishedOrdersToday.count %> completed</span>
+  </div>
+  <% if (!finishedOrdersToday.rows.length) { %>
+    <p style="color:var(--muted);text-align:center;padding:16px 0;">No finished tickets yet today.</p>
+  <% } else { %>
+    <% finishedOrdersToday.rows.forEach((row) => { %>
+      <div class="item-row">
+        <div>
+          <strong><%= row.table ? row.table.table_name : 'Unknown table' %></strong>
+          <span style="color:var(--muted);margin-left:8px;"><%= row.item ? row.item.item_name : 'Item #' + row.item_id %></span>
+          <span class="badge" style="font-size:11px;margin-left:6px;">x<%= row.quantity %></span>
+        </div>
+        <span class="badge status-available"><%= statusLabel(row.status) %></span>
+      </div>
+    <% }) %>
   <% } %>
 </section>
 

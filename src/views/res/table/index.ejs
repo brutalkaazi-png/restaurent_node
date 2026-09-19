@@ -1,30 +1,45 @@
-<div class="card">
-  <div class="item-row">
-    <h2>Tables</h2>
-    <a class="btn" href="/tables/create">+ Add table</a>
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Dining Room Configuration</span>
+      <span style="font-size:12px;color:var(--muted);"><%= tables.length %> tables</span>
+    </div>
+    <h2>Table Setup & QR Codes</h2>
+    <p>Configure restaurant tables, physical seating names, and guest digital menu URLs.</p>
   </div>
+  <a class="btn" href="/tables/create">+ Add table</a>
 </div>
 
 <% if (!tables.length) { %>
-  <div class="card">No tables yet.</div>
-<% } %>
-
-<% tables.forEach(function(table) { %>
-  <div class="card">
-    <div class="item-row">
-      <div>
-        <strong><%= table.table_name %></strong>
-        <div style="font-size:0.85em;color:#777;">
-          Menu link: /<%= slug %>/menu/<%= table.table_slug %>
-        </div>
-        <div style="font-size:0.85em;">Status: <%= table.status || 'available' %></div>
-      </div>
-      <div>
-        <a class="btn" href="/tables/<%= table.id %>/edit">Edit</a>
-        <form method="POST" action="/tables/<%= table.id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this table?');">
-          <button type="submit" class="btn btn-secondary">Delete</button>
-        </form>
-      </div>
-    </div>
+  <div class="card" style="text-align:center;padding:48px 20px;">
+    <div style="font-size:32px;margin-bottom:8px;">▦</div>
+    <h3 style="margin:0 0 6px;">No tables created</h3>
+    <p style="color:var(--muted);margin:0 0 16px;">Set up tables to allow guests to order via dine-in QR codes.</p>
+    <a class="btn" href="/tables/create">+ Add First Table</a>
   </div>
-<% }) %>
+<% } else { %>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;">
+    <% tables.forEach(function(table) { %>
+      <div class="card" style="margin:0;display:flex;flex-direction:column;justify-content:space-between;">
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <strong style="font-size:18px;color:var(--ink);"><%= table.table_name %></strong>
+            <span class="badge <%= table.status === 'available' ? 'status-available' : 'status-occupied' %>" style="text-transform:capitalize;">
+              <%= (table.status || 'available').replaceAll('_', ' ') %>
+            </span>
+          </div>
+          <div style="font-size:12.5px;color:var(--muted);background:#f8fafc;padding:8px 10px;border-radius:6px;border:1px solid var(--line);word-break:break-all;margin-bottom:14px;">
+            <span style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--subtle);margin-bottom:2px;">QR Menu URL:</span>
+            <a href="/<%= slug %>/menu/<%= table.table_slug %>" target="_blank" style="color:var(--brand);text-decoration:none;">/<%= slug %>/menu/<%= table.table_slug %> ↗</a>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:12px;margin-top:auto;">
+          <a class="btn btn-secondary" href="/tables/<%= table.id %>/edit" style="flex:1;text-align:center;padding:7px 12px;font-size:13px;">Edit Table</a>
+          <form method="POST" action="/tables/<%= table.id %>/delete" style="margin:0;" onsubmit="return confirm('Delete this table?');">
+            <button type="submit" class="btn btn-secondary" style="padding:7px 12px;font-size:13px;color:#be123c;">Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+<% } %>
