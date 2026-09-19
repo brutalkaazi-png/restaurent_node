@@ -1,39 +1,201 @@
-<div class="card">
-  <div class="item-row">
-    <h2>Inventory</h2>
-    <a class="btn" href="/inventory/create">+ Add item</a>
+<%
+const totalTracked = items.length;
+const lowStockCount = items.filter(i => parseFloat(i.quantity) > 0 && parseFloat(i.quantity) <= 10).length;
+const outOfStockCount = items.filter(i => parseFloat(i.quantity) <= 0).length;
+const healthyCount = items.filter(i => parseFloat(i.quantity) > 10).length;
+%>
+
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Kitchen & Bar Inventory</span>
+      <span style="font-size:12px;color:var(--muted);">Ingredient & Supply Tracking</span>
+    </div>
+    <h2>Stock & Inventory Ledger</h2>
+    <p>Track raw ingredients, liquor supplies, packaging goods, and record inbound purchases and kitchen stock-outs.</p>
   </div>
-  <a class="btn btn-secondary" href="/inventory-report">View stock report</a>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <a class="btn" href="/inventory/create" style="box-shadow:var(--shadow-brand);display:flex;align-items:center;gap:6px;">
+      <span>+</span> Add Stock Item
+    </a>
+    <a class="btn btn-secondary" href="/inventory-report" style="display:flex;align-items:center;gap:6px;">
+      <span>📊</span> Stock Movement Report
+    </a>
+  </div>
+</div>
+
+<!-- 3 INVENTORY KPI CARDS -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:20px;">
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Items Tracked</span>
+    <div style="font-size:28px;font-weight:800;color:var(--ink);margin:6px 0 2px;"><%= totalTracked %></div>
+    <span style="font-size:12px;color:var(--muted);">Active raw materials & products</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Adequate Stock</span>
+    <div style="font-size:28px;font-weight:800;color:#16a34a;margin:6px 0 2px;"><%= healthyCount %></div>
+    <span style="font-size:12px;color:var(--muted);">Above minimum re-order threshold</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid <%= lowStockCount > 0 ? '#fed7aa' : 'var(--line)' %>;background:<%= lowStockCount > 0 ? '#fffaf5' : '#fff' %>;">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:<%= lowStockCount > 0 ? '#c2410c' : 'var(--muted)' %>;font-weight:700;">Low / Depleted Stock</span>
+    <div style="font-size:28px;font-weight:800;color:<%= lowStockCount > 0 ? '#ea580c' : 'var(--ink)' %>;margin:6px 0 2px;"><%= lowStockCount + outOfStockCount %></div>
+    <span style="font-size:12px;color:<%= lowStockCount > 0 ? '#c2410c' : 'var(--muted)' %>;"><%= outOfStockCount %> depleted, <%= lowStockCount %> low</span>
+  </div>
+</div>
+
+<!-- SEARCH AND FILTER BAR -->
+<div class="card" style="margin-bottom:20px;padding:14px 20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+    <div style="position:relative;flex:1;min-width:240px;">
+      <input type="text" id="inventory-search" placeholder="Search ingredients or items by name or unit..." style="margin:0;padding:10px 14px 10px 38px;border-radius:8px;">
+      <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;">🔍</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button type="button" class="btn btn-secondary filter-stock-btn active-filter" data-filter="all" style="padding:6px 12px;font-size:12.5px;">All Items</button>
+      <button type="button" class="btn btn-secondary filter-stock-btn" data-filter="low" style="padding:6px 12px;font-size:12.5px;">⚠️ Low Stock</button>
+      <button type="button" class="btn btn-secondary filter-stock-btn" data-filter="healthy" style="padding:6px 12px;font-size:12.5px;">✓ In Stock</button>
+    </div>
+  </div>
 </div>
 
 <% if (!items.length) { %>
-  <div class="card">No inventory items yet.</div>
+  <div class="card" style="text-align:center;padding:56px 20px;">
+    <div style="font-size:36px;margin-bottom:12px;">📦</div>
+    <h3 style="margin:0 0 6px;">No inventory items recorded yet</h3>
+    <p style="color:var(--muted);margin:0 0 18px;">Start tracking flour, dairy, proteins, packaging, or bar liquor to monitor inventory levels.</p>
+    <a class="btn" href="/inventory/create">+ Add First Inventory Item</a>
+  </div>
+<% } else { %>
+  <div style="display:grid;gap:12px;" id="inventory-grid">
+    <% items.forEach(function(item) { 
+      const qty = parseFloat(item.quantity) || 0;
+      const isOut = qty <= 0;
+      const isLow = qty > 0 && qty <= 10;
+      const statusClass = isOut ? 'out' : (isLow ? 'low' : 'healthy');
+    %>
+      <div class="card inventory-item-card" data-name="<%= item.name.toLowerCase() %>" data-unit="<%= item.unit.toLowerCase() %>" data-status="<%= statusClass %>" style="margin:0;box-shadow:var(--shadow-sm);border:1px solid var(--line);transition:transform 0.15s ease, box-shadow 0.15s ease;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">
+          <!-- ITEM DETAILS -->
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:44px;height:44px;border-radius:10px;background:<%= isOut ? '#fee2e2' : (isLow ? '#ffedd5' : '#f0fdf4') %>;color:<%= isOut ? '#b91c1c' : (isLow ? '#c2410c' : '#15803d') %>;display:grid;place-items:center;font-size:20px;font-weight:700;">
+              <%= isOut ? '⚠️' : (isLow ? '⏳' : '📦') %>
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <strong style="font-size:16px;color:var(--ink);"><%= item.name %></strong>
+                <span class="badge" style="font-size:11px;background:#f1f5f9;color:#475569;"><%= item.unit %></span>
+              </div>
+              <div style="font-size:12.5px;color:var(--muted);margin-top:2px;">
+                Item ID #<%= item.id %> &middot; Tracked in real time
+              </div>
+            </div>
+          </div>
+
+          <!-- STOCK QUANTITY & HEALTH BADGE -->
+          <div style="text-align:right;display:flex;align-items:center;gap:16px;">
+            <div>
+              <div style="font-size:20px;font-weight:800;color:<%= isOut ? '#b91c1c' : (isLow ? '#c2410c' : 'var(--ink)') %>;">
+                <%= qty %> <span style="font-size:13px;font-weight:500;color:var(--muted);"><%= item.unit %></span>
+              </div>
+              <% if (isOut) { %>
+                <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:11px;font-weight:700;">Depleted</span>
+              <% } else if (isLow) { %>
+                <span class="badge" style="background:#ffedd5;color:#9a3412;font-size:11px;font-weight:700;">Low Stock (≤10)</span>
+              <% } else { %>
+                <span class="badge" style="background:#dcfce7;color:#166534;font-size:11px;font-weight:700;">Healthy</span>
+              <% } %>
+            </div>
+
+            <!-- STOCK IN / OUT ACTIONS -->
+            <div style="display:flex;gap:6px;">
+              <a class="btn" href="/inventory/<%= item.id %>/stock-in" style="padding:7px 12px;font-size:12.5px;font-weight:700;background:#16a34a;border-color:#16a34a;" title="Inbound delivery or restock">
+                + Stock In
+              </a>
+              <a class="btn btn-secondary" href="/inventory/<%= item.id %>/stock-out" style="padding:7px 12px;font-size:12.5px;font-weight:600;" title="Kitchen deduction or wastage">
+                - Stock Out
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- FOOTER ACTIONS -->
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;gap:6px;">
+            <a class="btn btn-secondary" href="/inventory/<%= item.id %>/history" style="padding:5px 10px;font-size:12px;">
+              📜 Audit History
+            </a>
+            <a class="btn btn-secondary" href="/inventory/<%= item.id %>/edit" style="padding:5px 10px;font-size:12px;">
+              ✏️ Edit
+            </a>
+          </div>
+
+          <form method="POST" action="/inventory/<%= item.id %>/delete" style="display:inline;margin:0;" onsubmit="return confirm('Permanently delete <%= item.name %> from inventory?');">
+            <button type="submit" class="btn btn-secondary" style="padding:5px 10px;font-size:12px;color:#be123c;border-color:#fecdd3;background:#fff1f2;">
+              Delete
+            </button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+  </div>
 <% } %>
 
-<% items.forEach(function(item) { %>
-  <div class="card">
-    <div class="item-row">
-      <div>
-        <strong><%= item.name %></strong>
-        <div style="font-size:0.85em;color:#777;"><%= item.quantity %> <%= item.unit %> in stock</div>
-      </div>
-      <div>
-        <a class="btn" href="/inventory/<%= item.id %>/stock-in">+ Stock in</a>
-        <a class="btn btn-secondary" href="/inventory/<%= item.id %>/stock-out">- Stock out</a>
-      </div>
-    </div>
-    <div style="margin-top:8px;">
-      <a class="btn btn-secondary" href="/inventory/<%= item.id %>/history">History</a>
-      <a class="btn btn-secondary" href="/inventory/<%= item.id %>/edit">Edit</a>
-      <form method="POST" action="/inventory/<%= item.id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this item?');">
-        <button type="submit" class="btn btn-secondary">Delete</button>
-      </form>
-    </div>
+<!-- PAGINATION -->
+<% if (totalPages > 1) { %>
+  <div class="card" style="display:flex;justify-content:center;gap:6px;margin-top:20px;">
+    <% for (let p = 1; p <= totalPages; p++) { %>
+      <a class="btn <%= p === page ? '' : 'btn-secondary' %>" href="?page=<%= p %>" style="min-width:36px;text-align:center;padding:6px 12px;"><%= p %></a>
+    <% } %>
   </div>
-<% }) %>
+<% } %>
 
-<div class="card">
-  <% for (let p = 1; p <= totalPages; p++) { %>
-    <a class="btn <%= p === page ? '' : 'btn-secondary' %>" href="?page=<%= p %>"><%= p %></a>
-  <% } %>
-</div>
+<script>
+  const searchInput = document.getElementById('inventory-search');
+  const cards = document.querySelectorAll('.inventory-item-card');
+  const filterBtns = document.querySelectorAll('.filter-stock-btn');
+  let currentFilter = 'all';
+
+  function filterItems() {
+    const q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+    cards.forEach(card => {
+      const name = card.dataset.name;
+      const unit = card.dataset.unit;
+      const status = card.dataset.status;
+
+      const matchesSearch = !q || name.includes(q) || unit.includes(q);
+      let matchesFilter = true;
+
+      if (currentFilter === 'low') {
+        matchesFilter = status === 'low' || status === 'out';
+      } else if (currentFilter === 'healthy') {
+        matchesFilter = status === 'healthy';
+      }
+
+      card.style.display = (matchesSearch && matchesFilter) ? 'block' : 'none';
+    });
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', filterItems);
+  }
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => {
+        b.style.background = '#fff';
+        b.style.color = 'var(--ink-secondary)';
+        b.style.border = '1px solid var(--line)';
+      });
+      btn.style.background = 'var(--brand)';
+      btn.style.color = '#fff';
+      btn.style.border = '1px solid var(--brand)';
+
+      currentFilter = btn.dataset.filter;
+      filterItems();
+    });
+  });
+</script>
+
