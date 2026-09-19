@@ -1,0 +1,124 @@
+<%
+// NOTE: the original Blade view delegates to an <x-menu-layout> component
+// and then includes one of several swappable "menu.templates.template-N"
+// partials chosen by menuTemplate.template_id. That template-picker system
+// is a separate module (SuperAdmin > Template builder) and hasn't been
+// ported yet, so this is a single, functional default layout instead.
+%>
+<% function mediaUrl(path) { return path ? (path.startsWith('assets/') ? '/' + path : '/uploads/' + path) : ''; } %>
+<div class="card">
+  <% if (restaurant.logo) { %><img src="<%= mediaUrl(restaurant.logo) %>" alt="<%= restaurant.name %>" style="width:72px;height:48px;object-fit:cover;border-radius:8px;"> <% } %>
+  <h2><%= restaurant.name %></h2>
+  <p><%= restaurant.address %> &middot; Table: <%= table.table_name %></p>
+
+  <% if (showStartOverPrompt) { %>
+    <div class="message">
+      This table has an existing order from someone else's session.
+      <% if (canStartOver) { %>
+        <form method="POST" action="/table-menu/start-over/<%= table.id %>">
+          <button class="btn" type="submit">Start a new order</button>
+        </form>
+      <% } else { %>
+        <p>There are active items being prepared, so you can't start over yet - ask a staff member for help.</p>
+      <% } %>
+    </div>
+  <% } %>
+
+  <% if (isBillRequested) { %>
+    <div class="message">Bill already requested for this table. Please pay at the counter.</div>
+  <% } %>
+</div>
+
+<% if (!allMenus.length) { %>
+  <p>No menu items available.</p>
+<% } else { %>
+  <% categories.forEach(function(cat) { %>
+    <div class="card">
+      <% if (cat.category_image) { %><img src="<%= mediaUrl(cat.category_image) %>" alt="<%= cat.category_name %>" style="width:100%;max-height:150px;object-fit:cover;border-radius:8px;"> <% } %>
+      <h3><%= cat.category_name %></h3>
+      <% allMenus.filter(function(item){ return item.item_category === cat.id }).forEach(function(item) { %>
+        <div class="item-row">
+          <div>
+            <% if (item.item_image) { %><img src="<%= mediaUrl(item.item_image) %>" alt="<%= item.item_name %>" style="width:96px;height:72px;object-fit:cover;border-radius:8px;margin-bottom:6px;"> <% } %>
+            <strong><%= item.item_name %></strong><br>
+            <% if (item.sold_out) { %><small style="color:#be123c;font-weight:700;">Sold out</small><br><% } %>
+            <small><%= item.item_description || '' %></small><br>
+            <% if (item.variants && item.variants.length) { %>
+              <small>From $<%= Math.min(...item.variants.map(v => parseFloat(v.price))).toFixed(2) %></small>
+            <% } else if (item.discounted_price !== null && item.discounted_price !== undefined) { %>
+              <small><s>$<%= parseFloat(item.price).toFixed(2) %></s> <strong style="color:#28a745;">$<%= item.discounted_price.toFixed(2) %></strong> (<%= item.active_discount.discount_percentage %>% off now)</small>
+            <% } else { %>
+              <small>$<%= parseFloat(item.price).toFixed(2) %></small>
+            <% } %>
+          </div>
+          <button class="btn add-item-btn" data-item-id="<%= item.id %>" <%= item.sold_out ? 'disabled aria-label="Sold out"' : '' %>><%= item.sold_out ? 'Sold out' : 'Add' %></button>
+        </div>
+      <% }) %>
+    </div>
+  <% }) %>
+<% } %>
+
+<div class="card" id="cart-summary">
+  <a class="btn" href="#" id="view-cart-btn">View cart</a>
+</div>
+
+<div class="card">
+  <h3>Need help?</h3>
+  <p>Ask the restaurant team for assistance.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button type="button" class="btn staff-call-btn" data-type="general">Call staff</button>
+    <button type="button" class="btn btn-secondary staff-call-btn" data-type="water">Request water</button>
+    <button type="button" class="btn btn-secondary staff-call-btn" data-type="bill">Request bill</button>
+  </div>
+  <p id="staff-call-message" role="status" aria-live="polite"></p>
+</div>
+
+<script>
+  // Minimal wiring for add-to-cart / cart refresh against the ported
+  // TableMenuController endpoints. Extend this with the original
+  // front-end's variant/topping picker modal as you port that UI.
+  const tableId = <%= table.id %>;
+
+  document.querySelectorAll('.staff-call-btn').forEach((button) => button.addEventListener('click', async () => {
+    button.disabled = true;
+    const message = document.getElementById('staff-call-message');
+    try {
+      const response = await fetch(`/staff-call/${tableId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: button.dataset.type }),
+      });
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json') ? await response.json() : { message: 'Staff call could not be sent.' };
+      message.textContent = data.message || 'Staff call could not be sent.';
+      if (!response.ok) button.disabled = false;
+    } catch (error) {
+      message.textContent = 'Unable to contact the restaurant. Please try again.';
+      button.disabled = false;
+    }
+  }));
+
+  document.querySelectorAll('.add-item-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      fetch('/add-table-menu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table_id: tableId,
+          items: [{ item_id: btn.dataset.itemId, quantity: 1 }],
+        }),
+      })
+        .then(r => r.json())
+        .then(() => refreshCart());
+    });
+  });
+
+  function refreshCart() {
+    fetch('/get-tablecart?show=my')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('cart-summary').innerHTML =
+          '<a class="btn" href="#" id="view-cart-btn">View cart (' + data.all_orders_count + ') - $' + data.total.toFixed(2) + '</a>';
+      });
+  }
+</script>

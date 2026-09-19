@@ -1,0 +1,28 @@
+<div class="card">
+  <h2>Transaction history: <%= item.name %></h2>
+  <p>Current: <%= item.quantity %> <%= item.unit %></p>
+</div>
+<% if (!transactions.length) { %>
+  <div class="card">No transactions yet.</div>
+<% } %>
+<% transactions.forEach(function(t) { %>
+  <div class="card">
+    <div class="item-row">
+      <div>
+        <strong><%= t.type === 'in' ? '+ Stock in' : '- Stock out' %></strong>
+        <div style="font-size:0.85em;color:#777;"><%= t.created_at %></div>
+        <% if (t.notes) { %><div style="font-size:0.85em;"><%= t.notes %></div><% } %>
+      </div>
+      <div>
+        <%= t.quantity %> <%= item.unit %>
+        <% if (t.price_per_unit) { %><br><small>@ <%= t.price_per_unit %>/unit</small><% } %>
+      </div>
+    </div>
+  </div>
+<% }) %>
+<div class="card">
+  <% for (let p = 1; p <= totalPages; p++) { %>
+    <a class="btn <%= p === page ? '' : 'btn-secondary' %>" href="?page=<%= p %>"><%= p %></a>
+  <% } %>
+  <a class="btn btn-secondary" href="/inventory">Back to inventory</a>
+</div>

@@ -1,0 +1,30 @@
+<div class="card">
+  <div class="item-row">
+    <h2>Tables</h2>
+    <a class="btn" href="/tables/create">+ Add table</a>
+  </div>
+</div>
+
+<% if (!tables.length) { %>
+  <div class="card">No tables yet.</div>
+<% } %>
+
+<% tables.forEach(function(table) { %>
+  <div class="card">
+    <div class="item-row">
+      <div>
+        <strong><%= table.table_name %></strong>
+        <div style="font-size:0.85em;color:#777;">
+          Menu link: /<%= slug %>/menu/<%= table.table_slug %>
+        </div>
+        <div style="font-size:0.85em;">Status: <%= table.status || 'available' %></div>
+      </div>
+      <div>
+        <a class="btn" href="/tables/<%= table.id %>/edit">Edit</a>
+        <form method="POST" action="/tables/<%= table.id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this table?');">
+          <button type="submit" class="btn btn-secondary">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+<% }) %>

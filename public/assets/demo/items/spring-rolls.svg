@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-labelledby="title desc">
+  <title id="title">Spring rolls</title>
+  <desc id="desc">Golden vegetable spring rolls with dipping sauce.</desc>
+  <rect width="800" height="500" fill="#fff7ed"/>
+  <ellipse cx="400" cy="290" rx="250" ry="100" fill="#fed7aa"/>
+  <g fill="#eab308" stroke="#a16207" stroke-width="7"><rect x="220" y="210" width="250" height="58" rx="29" transform="rotate(-14 220 210)"/><rect x="300" y="270" width="250" height="58" rx="29" transform="rotate(12 300 270)"/><rect x="210" y="325" width="250" height="58" rx="29" transform="rotate(-7 210 325)"/></g>
+  <circle cx="580" cy="255" r="52" fill="#dc2626" stroke="#991b1b" stroke-width="8"/>
+  <text x="400" y="90" text-anchor="middle" fill="#9a3412" font-family="Georgia,serif" font-size="46">SPRING ROLLS</text>
+</svg>

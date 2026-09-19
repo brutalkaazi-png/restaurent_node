@@ -1,0 +1,17 @@
+<div class="card">
+  <h2>Stock in: <%= item.name %></h2>
+  <p>Current: <%= item.quantity %> <%= item.unit %></p>
+  <% if (errors && errors.length) { %>
+    <div class="message"><% errors.forEach(function(e) { %><div><%= e %></div><% }) %></div>
+  <% } %>
+  <form method="POST" action="/inventory/<%= item.id %>/stock-in">
+    <label>Quantity to add (<%= item.unit %>)</label>
+    <input type="number" step="0.01" min="0.01" name="quantity" required>
+    <label>Price per unit (optional)</label>
+    <input type="number" step="0.01" min="0" name="price_per_unit">
+    <label>Notes (optional)</label>
+    <input type="text" name="notes">
+    <button class="btn" type="submit">Add stock</button>
+    <a class="btn btn-secondary" href="/inventory">Cancel</a>
+  </form>
+</div>

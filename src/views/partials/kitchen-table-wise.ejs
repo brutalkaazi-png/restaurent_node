@@ -1,0 +1,13 @@
+<% if (!orders.length) { %>
+  <tr><td colspan="5" class="text-center"><div class="alert"><%= noOrdersMessage %></div></td></tr>
+<% } else { %>
+  <% orders.forEach(function(o, i) { %>
+    <tr>
+      <td><%= i + 1 %></td>
+      <td><%= o.table ? o.table.table_name : '' %></td>
+      <td><%= o.item ? o.item.item_name : 'Item #' + o.item_id %></td>
+      <td><%= o.quantity %></td>
+      <td><%= o.status %></td>
+    </tr>
+  <% }) %>
+<% } %>

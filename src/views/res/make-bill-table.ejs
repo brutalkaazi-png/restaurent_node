@@ -1,0 +1,59 @@
+<%
+let grandTotal = 0;
+%>
+<style>
+  .bill-items-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+  .bill-items-table th, .bill-items-table td { padding: 8px 5px; text-align: left; border-bottom: 1px solid #eee; }
+  .bill-items-table th { font-weight: bold; background-color: #f8f9fa; }
+  .col-qty { width: 15%; text-align: center; }
+  .col-rate, .col-total { width: 20%; text-align: right; }
+</style>
+
+<div class="card">
+  <h2><%= restaurant.name %></h2>
+  <p><%= restaurant.address %></p>
+  <p>Table: <%= table.table_name %></p>
+
+  <table class="bill-items-table">
+    <thead>
+      <tr>
+        <th class="col-qty">Qty</th>
+        <th>Item</th>
+        <th class="col-rate">Rate</th>
+        <th class="col-total">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% orders.forEach(function(order) { %>
+        <% const itemTotal = order.quantity * parseFloat(order.price); grandTotal += itemTotal; %>
+        <tr>
+          <td class="col-qty"><%= order.quantity %></td>
+          <td>
+            <%= order.item ? order.item.item_name : 'N/A' %>
+            <% if (order.variant) { %><br><em>- <%= order.variant.name %></em><% } %>
+            <% if (order.toppings && order.toppings.length) { %>
+              <br><small>+ <%= order.toppings.map(t => t.name).join(', ') %></small>
+            <% } %>
+          </td>
+          <td class="col-rate"><%= parseFloat(order.price).toFixed(2) %></td>
+          <td class="col-total"><%= itemTotal.toFixed(2) %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="item-row">
+    <strong>Grand Total</strong>
+    <strong id="total"><%= grandTotal.toFixed(2) %></strong>
+  </div>
+
+  <div style="margin-top:16px;">
+    <form id="request-bill-form" action="/request-bill/<%= table.id %>" method="POST">
+      <button type="submit" class="btn btn-secondary" style="width:100%;">Pay Cash at Counter</button>
+    </form>
+
+    <% if (restaurant.card_payment == 1 && restaurant.public_key && restaurant.secret_key) { %>
+      <button type="button" class="btn" style="width:100%;margin-top:8px;" id="pay-with-card-btn">Pay with Card</button>
+    <% } %>
+  </div>
+</div>

@@ -1,0 +1,42 @@
+<div class="card">
+  <h2>Order report by item</h2>
+  <form method="GET">
+    <label>Status</label>
+    <select name="status">
+      <option value="">Any</option>
+      <option value="requested" <%= status === 'requested' ? 'selected' : '' %>>Requested</option>
+      <option value="completed" <%= status === 'completed' ? 'selected' : '' %>>Completed</option>
+      <option value="cancelled" <%= status === 'cancelled' ? 'selected' : '' %>>Cancelled</option>
+    </select>
+    <label>Period</label>
+    <select name="date_period">
+      <option value="">All time</option>
+      <option value="daily" <%= datePeriod === 'daily' ? 'selected' : '' %>>Daily</option>
+      <option value="monthly" <%= datePeriod === 'monthly' ? 'selected' : '' %>>Monthly</option>
+      <option value="yearly" <%= datePeriod === 'yearly' ? 'selected' : '' %>>Yearly</option>
+      <option value="custom" <%= datePeriod === 'custom' ? 'selected' : '' %>>Custom (from|to)</option>
+    </select>
+    <label>Date</label>
+    <input type="text" name="selected_date" value="<%= dateRange %>">
+    <button class="btn" type="submit">Apply</button>
+  </form>
+</div>
+
+<% const categories = Object.keys(groupedOrderItems); %>
+<% if (!categories.length) { %>
+  <div class="card">No order items match this filter.</div>
+<% } %>
+<% categories.forEach(function(catName) { %>
+  <div class="card">
+    <h3><%= catName %></h3>
+    <% groupedOrderItems[catName].forEach(function(row) { %>
+      <div class="item-row">
+        <div><%= row.item_name %></div>
+        <div>
+          <%= row.sum_qty %> sold &middot; <%= setting.currency || '$' %><%= parseFloat(row.total_sum).toFixed(2) %>
+          <a class="btn btn-secondary" href="view/<%= row.item_id %>?date_period=<%= datePeriod %>&selected_date=<%= dateRange %>">Details</a>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+<% }) %>

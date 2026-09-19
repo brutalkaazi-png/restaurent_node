@@ -1,0 +1,31 @@
+<style>
+  .calls-header { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .call-type { color:#687386; text-transform:capitalize; }
+  .calls-empty { color:#687386; text-align:center; }
+</style>
+<section class="card calls-header">
+  <div><h2>Staff calls</h2><p>Pending requests from guests at your tables.</p></div>
+  <span id="pending-count"><%= calls.length %> pending</span>
+</section>
+<section class="card" id="staff-call-list" aria-live="polite">
+  <% if (!calls.length) { %><p class="calls-empty">No pending staff calls.</p><% } %>
+  <% calls.forEach((call) => { %>
+    <div class="item-row" data-call-id="<%= call.id %>">
+      <div><strong>Table <%= call.table ? call.table.table_name : 'Unknown' %></strong><br><span class="call-type"><%= call.type %> request</span></div>
+      <button type="button" class="btn btn-secondary resolve-call" data-id="<%= call.id %>">Resolve</button>
+    </div>
+  <% }) %>
+</section>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  document.querySelectorAll('.resolve-call').forEach((button) => button.addEventListener('click', async () => {
+    button.disabled = true;
+    const response = await fetch(`/staff-calls/${button.dataset.id}/resolve`, { method: 'POST' });
+    if (response.ok) location.reload(); else button.disabled = false;
+  }));
+  const socket = io();
+  socket.emit('join-restaurant', <%= currentUser.id %>);
+  socket.on('restaurant-update', (event) => {
+    if (event.reason === 'staff-call' || event.reason === 'staff-call-updated') location.reload();
+  });
+</script>

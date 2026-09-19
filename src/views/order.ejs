@@ -1,0 +1,40 @@
+<%
+const items = order.order_items || [];
+const itemsTotal = items.reduce((sum, oi) => sum + parseFloat(oi.total), 0);
+const deliveryCharge = parseFloat(order.delivery_charge || 0);
+%>
+<div class="card">
+  <h3>Order Confirmed</h3>
+  <p>Order #<%= order.id %></p>
+  <h3>Thank you, <%= order.name %>!</h3>
+  <p>
+    We've received your order and are getting it ready.
+    <% if (order.email) { %>A confirmation has been noted for <strong><%= order.email %></strong>.<% } %>
+  </p>
+</div>
+
+<% if (order.email) { %>
+  <div class="card">
+    <h4>Customer details</h4>
+    <p><strong>Email</strong><br><%= order.email %></p>
+    <p><strong>Phone</strong><br><%= order.phone %></p>
+    <% if (order.address) { %><p><strong>Delivery address</strong><br><%= order.address %></p><% } %>
+  </div>
+<% } %>
+
+<div class="card">
+  <h4>Order details</h4>
+  <% items.forEach(function(oi) { %>
+    <div class="item-row">
+      <div>
+        <%= oi.qty %> x <%= oi.item ? oi.item.item_name : 'Item' %>
+        <% if (oi.variant_name) { %> (<%= oi.variant_name %>)<% } %>
+        <% if (oi.remarks) { %><br><small>Note: <%= oi.remarks %></small><% } %>
+      </div>
+      <div><%= parseFloat(oi.total).toFixed(2) %></div>
+    </div>
+  <% }) %>
+  <div class="item-row"><span>Delivery charge</span><span><%= deliveryCharge.toFixed(2) %></span></div>
+  <div class="item-row"><strong>Total</strong><strong><%= parseFloat(order.total_cost).toFixed(2) %></strong></div>
+  <p>Status: <span class="item-status"><%= order.order_status %></span></p>
+</div>

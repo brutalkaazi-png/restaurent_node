@@ -1,0 +1,22 @@
+<div class="card">
+  <div class="item-row">
+    <h2>Subscription plans</h2>
+    <a class="btn" href="/superadmin/subscriptions/create">+ Add plan</a>
+  </div>
+</div>
+<% subscriptions.forEach(function(s) { %>
+  <div class="card">
+    <div class="item-row">
+      <div>
+        <strong><%= s.name %></strong> <%= s.subscription_type ? '(' + s.subscription_type + ')' : '' %>
+        <div style="font-size:0.85em;color:#777;"><%= s.month %> month(s) &middot; <%= s.cost %></div>
+      </div>
+      <div>
+        <a class="btn" href="/superadmin/subscriptions/<%= s.id %>/edit">Edit</a>
+        <form method="POST" action="/superadmin/subscriptions/<%= s.id %>/delete" style="display:inline;">
+          <button type="submit" class="btn btn-secondary">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+<% }) %>

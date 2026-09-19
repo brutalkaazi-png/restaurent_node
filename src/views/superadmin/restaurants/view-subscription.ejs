@@ -1,0 +1,15 @@
+<div class="card">
+  <h2>Subscription history</h2>
+  <% if (!userSubscriptions.length) { %>
+    <p>No subscriptions purchased yet.</p>
+  <% } %>
+  <% userSubscriptions.forEach(function(s) { %>
+    <div class="item-row">
+      <div>
+        <%= s.subscription ? s.subscription.name : 'Plan #' + s.subscription_id %><br>
+        <small><%= s.subscription_start_date %> &rarr; <%= s.subscription_end_date %></small>
+      </div>
+      <div><span class="item-status"><%= s.subscription_status %></span> / <%= s.payment_status %></div>
+    </div>
+  <% }) %>
+</div>

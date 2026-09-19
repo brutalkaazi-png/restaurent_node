@@ -1,0 +1,42 @@
+<div class="card">
+  <div class="item-row">
+    <h2>Menu items</h2>
+    <a class="btn" href="/menus/create">+ Add item</a>
+  </div>
+  <form method="GET" action="/menus">
+    <select name="category_id" onchange="this.form.submit()">
+      <option value="">All categories</option>
+      <% categories.forEach(function(c) { %>
+        <option value="<%= c.id %>" <%= String(selectedCategoryId) === String(c.id) ? 'selected' : '' %>><%= c.category_name %></option>
+      <% }) %>
+    </select>
+  </form>
+</div>
+
+<% if (!menus.length) { %>
+  <div class="card">No menu items yet.</div>
+<% } %>
+
+<% menus.forEach(function(item) { %>
+  <div class="card">
+    <div class="item-row">
+      <div>
+        <strong><%= item.item_name %></strong>
+        <% if (item.is_drink) { %><span style="font-size:0.75em;color:#28a745;"> (drink)</span><% } %>
+        <% if (item.sold_out) { %><span style="font-size:0.75em;color:#be123c;"> (sold out)</span><% } %>
+        <div style="font-size:0.9em;color:#777;">
+          <%= item.has_variants ? 'Has variants' : (setting.currency || '$') + parseFloat(item.price || 0).toFixed(2) %>
+        </div>
+      </div>
+      <div>
+        <a class="btn" href="/menus/<%= item.id %>/edit">Edit</a>
+        <form method="POST" action="/menus/<%= item.id %>/toggle-sold-out" style="display:inline;">
+          <button type="submit" class="btn <%= item.sold_out ? '' : 'btn-secondary' %>"><%= item.sold_out ? 'Mark available' : 'Sold out' %></button>
+        </form>
+        <form method="POST" action="/menus/<%= item.id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this item?');">
+          <button type="submit" class="btn btn-secondary">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+<% }) %>

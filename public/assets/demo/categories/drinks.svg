@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" role="img" aria-labelledby="title desc">
+  <title id="title">Drinks category</title>
+  <desc id="desc">Illustrated iced tea glass with lemon and mint.</desc>
+  <rect width="800" height="420" fill="#ecfeff"/>
+  <circle cx="400" cy="230" r="145" fill="#cffafe"/>
+  <path d="M330 120h140l-18 205H348z" fill="#f59e0b" stroke="#92400e" stroke-width="8"/>
+  <path d="M345 175h110M342 230h108" stroke="#fef3c7" stroke-width="10" opacity=".8"/>
+  <path d="M446 122L515 52" stroke="#65a30d" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="515" cy="52" r="31" fill="#fde68a" stroke="#ca8a04" stroke-width="6"/>
+  <text x="400" y="72" text-anchor="middle" fill="#155e75" font-family="Georgia,serif" font-size="42">DRINKS</text>
+</svg>

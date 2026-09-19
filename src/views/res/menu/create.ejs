@@ -1,0 +1,128 @@
+<%
+const variants = menu && menu.variants ? menu.variants : [];
+const toppings = menu && menu.toppings ? menu.toppings : [];
+%>
+<div class="card">
+  <h2><%= menu ? 'Edit' : 'Add' %> menu item</h2>
+  <% if (typeof error !== 'undefined' && error) { %><div class="message"><%= error %></div><% } %>
+
+  <form method="POST" action="/menus" enctype="multipart/form-data" id="menu-form">
+    <% if (menu) { %><input type="hidden" name="id" value="<%= menu.id %>"><% } %>
+
+    <label>Item name</label>
+    <input type="text" name="item_name" value="<%= menu ? menu.item_name : '' %>" required>
+
+    <label>Custom slug (optional)</label>
+    <input type="text" name="item_slug" value="<%= menu ? menu.item_slug : '' %>">
+
+    <label>Category</label>
+    <select name="item_category" required>
+      <% categories.forEach(function(c) { %>
+        <option value="<%= c.id %>" <%= menu && menu.item_category === c.id ? 'selected' : '' %>><%= c.category_name %></option>
+      <% }) %>
+    </select>
+
+    <label>Description</label>
+    <textarea name="description" rows="2"><%= menu ? (menu.item_description || '') : '' %></textarea>
+
+    <label><input type="checkbox" name="is_drink" style="width:auto;display:inline-block;" <%= menu && menu.is_drink ? 'checked' : '' %>> This is a drink (routes to the bar, not the kitchen)</label>
+
+    <label><input type="checkbox" id="has_variants" name="has_variants" style="width:auto;display:inline-block;" <%= menu && menu.has_variants ? 'checked' : '' %>> Has variants (e.g. Small/Medium/Large, each with its own price)</label>
+
+    <div id="price-field" style="<%= menu && menu.has_variants ? 'display:none;' : '' %>">
+      <label>Price</label>
+      <input type="number" name="price" step="1" value="<%= menu && !menu.has_variants ? menu.price : '' %>">
+    </div>
+
+    <div id="variants-field" style="<%= menu && menu.has_variants ? '' : 'display:none;' %>">
+      <label>Variants</label>
+      <div id="variants-list">
+        <% variants.forEach(function(v) { %>
+          <div class="item-row">
+            <input type="text" placeholder="Name" value="<%= v.name %>" data-variant-name style="width:55%;">
+            <input type="number" placeholder="Price" value="<%= v.price %>" data-variant-price style="width:35%;">
+          </div>
+        <% }) %>
+      </div>
+      <button type="button" class="btn btn-secondary" id="add-variant-btn">+ Add variant</button>
+    </div>
+
+    <label style="margin-top:12px;"><input type="checkbox" id="has_toppings" name="has_toppings" style="width:auto;display:inline-block;" <%= menu && menu.has_toppings ? 'checked' : '' %>> Has toppings</label>
+    <div id="toppings-field" style="<%= menu && menu.has_toppings ? '' : 'display:none;' %>">
+      <label>Toppings</label>
+      <div id="toppings-list">
+        <% toppings.forEach(function(tp) { %>
+          <div class="item-row">
+            <input type="text" placeholder="Name" value="<%= tp.name %>" data-topping-name style="width:55%;">
+            <input type="number" placeholder="Price" value="<%= tp.price %>" data-topping-price style="width:35%;">
+          </div>
+        <% }) %>
+      </div>
+      <button type="button" class="btn btn-secondary" id="add-topping-btn">+ Add topping</button>
+    </div>
+
+    <label style="margin-top:12px;">Image</label>
+    <input type="file" name="item_image" accept="image/*">
+    <% if (menu && menu.item_image) { %><p><small>Current: <%= menu.item_image %></small></p><% } %>
+
+    <div id="hidden-variant-inputs"></div>
+    <div id="hidden-topping-inputs"></div>
+
+    <button class="btn" type="submit" style="margin-top:12px;">Save</button>
+    <a class="btn btn-secondary" href="/menus">Cancel</a>
+  </form>
+</div>
+
+<script>
+  const hasVariantsCb = document.getElementById('has_variants');
+  const hasToppingsCb = document.getElementById('has_toppings');
+  const priceField = document.getElementById('price-field');
+  const variantsField = document.getElementById('variants-field');
+  const toppingsField = document.getElementById('toppings-field');
+
+  hasVariantsCb.addEventListener('change', () => {
+    priceField.style.display = hasVariantsCb.checked ? 'none' : '';
+    variantsField.style.display = hasVariantsCb.checked ? '' : 'none';
+  });
+  hasToppingsCb.addEventListener('change', () => {
+    toppingsField.style.display = hasToppingsCb.checked ? '' : 'none';
+  });
+
+  document.getElementById('add-variant-btn').addEventListener('click', () => {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = '<input type="text" placeholder="Name" data-variant-name style="width:55%;">' +
+      '<input type="number" placeholder="Price" data-variant-price style="width:35%;">';
+    document.getElementById('variants-list').appendChild(row);
+  });
+  document.getElementById('add-topping-btn').addEventListener('click', () => {
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = '<input type="text" placeholder="Name" data-topping-name style="width:55%;">' +
+      '<input type="number" placeholder="Price" data-topping-price style="width:35%;">';
+    document.getElementById('toppings-list').appendChild(row);
+  });
+
+  // Serialize the dynamic variant/topping rows into indexed hidden inputs
+  // right before submit, since this is a plain (non-JS-fetch) form post.
+  document.getElementById('menu-form').addEventListener('submit', () => {
+    const variantInputs = document.getElementById('hidden-variant-inputs');
+    document.querySelectorAll('#variants-list .item-row').forEach((row, i) => {
+      const name = row.querySelector('[data-variant-name]').value;
+      const price = row.querySelector('[data-variant-price]').value;
+      if (name) {
+        variantInputs.innerHTML += `<input type="hidden" name="variants[${i}][name]" value="${name}">` +
+          `<input type="hidden" name="variants[${i}][price]" value="${price}">`;
+      }
+    });
+    const toppingInputs = document.getElementById('hidden-topping-inputs');
+    document.querySelectorAll('#toppings-list .item-row').forEach((row, i) => {
+      const name = row.querySelector('[data-topping-name]').value;
+      const price = row.querySelector('[data-topping-price]').value;
+      if (name) {
+        toppingInputs.innerHTML += `<input type="hidden" name="toppings[${i}][name]" value="${name}">` +
+          `<input type="hidden" name="toppings[${i}][price]" value="${price}">`;
+      }
+    });
+  });
+</script>

@@ -1,0 +1,21 @@
+<div class="card">
+  <h2><%= category ? 'Edit' : 'Add' %> category</h2>
+  <form method="POST" action="/categories" enctype="multipart/form-data">
+    <% if (category) { %><input type="hidden" name="id" value="<%= category.id %>"><% } %>
+
+    <label>Category name</label>
+    <input type="text" name="category_name" value="<%= category ? category.category_name : '' %>" required>
+
+    <label>Description</label>
+    <textarea name="description" rows="3"><%= category ? (category.category_description || '') : '' %></textarea>
+
+    <label>Image</label>
+    <input type="file" name="category_image" accept="image/*">
+    <% if (category && category.category_image) { %>
+      <p><small>Current: <%= category.category_image %></small></p>
+    <% } %>
+
+    <button class="btn" type="submit">Save</button>
+    <a class="btn btn-secondary" href="/categories">Cancel</a>
+  </form>
+</div>

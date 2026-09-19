@@ -1,0 +1,29 @@
+<style>
+  body { font-family: monospace; width: 280px; margin: 0; padding: 8px; }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 2px 0; }
+  .right { text-align: right; }
+  hr { border: none; border-top: 1px dashed #000; }
+</style>
+<div>
+  <h3 style="text-align:center;margin:4px 0;"><%= restaurant.name %></h3>
+  <p style="text-align:center;margin:0;"><%= restaurant.address %></p>
+  <p style="text-align:center;">Table: <%= table_name %></p>
+  <hr>
+  <table>
+    <% items.forEach(function(item) { %>
+      <tr>
+        <td><%= item.quantity %>x <%= item.item ? item.item.item_name : 'Item' %></td>
+        <td class="right"><%= (item.quantity * parseFloat(item.price)).toFixed(2) %></td>
+      </tr>
+    <% }) %>
+  </table>
+  <hr>
+  <table>
+    <tr><td>Subtotal</td><td class="right"><%= subtotal.toFixed(2) %></td></tr>
+    <% if (discount_percent) { %><tr><td>Discount (<%= discount_percent %>%)</td><td class="right">-<%= ((subtotal * discount_percent) / 100).toFixed(2) %></td></tr><% } %>
+    <% if (tax_percent) { %><tr><td>Tax (<%= tax_percent %>%)</td><td class="right"><%= ((subtotal * tax_percent) / 100).toFixed(2) %></td></tr><% } %>
+    <tr><td><strong>Total</strong></td><td class="right"><strong><%= setting.currency %> <%= grand_total.toFixed(2) %></strong></td></tr>
+  </table>
+  <p style="text-align:center;margin-top:8px;">Thank you!</p>
+</div>

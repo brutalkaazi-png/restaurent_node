@@ -1,0 +1,26 @@
+<div class="card">
+  <h2><%= waiter ? 'Edit' : 'Add' %> waiter</h2>
+  <% if (errors && errors.length) { %>
+    <div class="message"><% errors.forEach(function(e) { %><div><%= e %></div><% }) %></div>
+  <% } %>
+
+  <form method="POST" action="<%= waiter ? '/waiters/' + waiter.id : '/waiters' %>">
+    <label>Name</label>
+    <input type="text" name="name" value="<%= waiter ? waiter.name : '' %>" required>
+
+    <label>Email</label>
+    <input type="email" name="email" value="<%= waiter ? waiter.email : '' %>" required>
+
+    <label>Address (optional)</label>
+    <input type="text" name="address" value="<%= waiter ? (waiter.address || '') : '' %>">
+
+    <label>Password<%= waiter ? ' (leave blank to keep current password)' : '' %></label>
+    <input type="password" name="password" minlength="8" <%= waiter ? '' : 'required' %>>
+
+    <label>Confirm password</label>
+    <input type="password" name="password_confirmation" minlength="8" <%= waiter ? '' : 'required' %>>
+
+    <button class="btn" type="submit">Save</button>
+    <a class="btn btn-secondary" href="/waiters">Cancel</a>
+  </form>
+</div>

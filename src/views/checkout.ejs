@@ -1,0 +1,110 @@
+<%
+const entries = Object.entries(cart || {});
+const subtotal = entries.reduce((sum, [, c]) => sum + c.price * c.quantity, 0);
+const deliveryCharge = parseFloat(restaurant.delivery_charge || 0);
+%>
+<div class="card">
+  <h2>Checkout</h2>
+  <p><%= restaurantName %> &middot; <%= restaurantAddress %></p>
+
+  <h4>Order summary</h4>
+  <% entries.forEach(function([key, c]) { %>
+    <div class="item-row">
+      <div><%= c.quantity %> x <%= c.name %></div>
+      <div>$<%= (c.price * c.quantity).toFixed(2) %></div>
+    </div>
+  <% }) %>
+  <div class="item-row"><span>Subtotal</span><span id="subtotal-display">$<%= subtotal.toFixed(2) %></span></div>
+  <div class="item-row"><span>Delivery charge</span><span id="delivery-charge-display">$<%= deliveryCharge.toFixed(2) %></span></div>
+  <div class="item-row"><strong>Total</strong><strong id="total-display">$<%= (subtotal + deliveryCharge).toFixed(2) %></strong></div>
+</div>
+
+<div class="card">
+  <form id="checkout-form" method="POST" action="/store_order">
+    <input type="hidden" name="delivery_charge" id="delivery_charge_input" value="<%= deliveryCharge %>">
+    <input type="hidden" name="payment_method" id="payment_method_input" value="cod">
+    <input type="hidden" name="stripeToken" id="stripe_token_input">
+    <input type="hidden" name="total_cost" id="total_cost_input" value="<%= subtotal + deliveryCharge %>">
+
+    <label>Delivery type</label>
+    <select name="delivery_type" id="delivery_type_select">
+      <option value="pickup">Pickup</option>
+      <option value="home_delivery">Home delivery</option>
+    </select>
+
+    <div id="address-field" style="display:none;">
+      <label>Delivery address</label>
+      <input type="text" name="address" value="<%= currentUser ? (currentUser.address || '') : '' %>">
+    </div>
+
+    <label>Preferred time (optional)</label>
+    <input type="text" name="delivery_time" placeholder="e.g. ASAP or 7:00 PM">
+
+    <label>Name</label>
+    <input type="text" name="name" value="<%= currentUser ? currentUser.name : '' %>" required>
+
+    <label>Email</label>
+    <input type="email" name="email" value="<%= currentUser ? currentUser.email : '' %>" required>
+
+    <label>Phone</label>
+    <input type="text" name="phone" value="<%= currentUser ? currentUser.phone || '' : '' %>" required>
+
+    <% if (!currentUser) { %>
+      <label><input type="checkbox" id="create_account_cb" name="create_account" style="width:auto;display:inline-block;"> Create an account with this order</label>
+      <div id="password-fields" style="display:none;">
+        <label>Password</label>
+        <input type="password" name="password" minlength="6">
+        <label>Confirm password</label>
+        <input type="password" name="password_confirmation" minlength="6">
+      </div>
+    <% } %>
+
+    <% if (restaurant.card_payment) { %>
+      <label>Payment method</label>
+      <select id="payment_method_select">
+        <option value="cod">Cash on delivery/pickup</option>
+        <option value="card">Card</option>
+      </select>
+      <p><small>Card payment requires Stripe.js on the client to tokenize the card and set #stripe_token_input before submit - not wired up in this port; cash on delivery/pickup works end-to-end.</small></p>
+    <% } %>
+
+    <button class="btn" type="submit" style="width:100%;margin-top:12px;">Place order</button>
+  </form>
+</div>
+
+<script>
+  document.getElementById('delivery_type_select').addEventListener('change', function () {
+    const addressField = document.getElementById('address-field');
+    const deliveryChargeInput = document.getElementById('delivery_charge_input');
+    const deliveryChargeDisplay = document.getElementById('delivery-charge-display');
+    const totalDisplay = document.getElementById('total-display');
+    const totalCostInput = document.getElementById('total_cost_input');
+    const subtotal = <%= subtotal %>;
+
+    if (this.value === 'home_delivery') {
+      addressField.style.display = '';
+      deliveryChargeInput.value = <%= deliveryCharge %>;
+    } else {
+      addressField.style.display = 'none';
+      deliveryChargeInput.value = 0;
+    }
+    const charge = parseFloat(deliveryChargeInput.value);
+    deliveryChargeDisplay.textContent = '$' + charge.toFixed(2);
+    totalDisplay.textContent = '$' + (subtotal + charge).toFixed(2);
+    totalCostInput.value = subtotal + charge;
+  });
+
+  const createAccountCb = document.getElementById('create_account_cb');
+  if (createAccountCb) {
+    createAccountCb.addEventListener('change', function () {
+      document.getElementById('password-fields').style.display = this.checked ? '' : 'none';
+    });
+  }
+
+  const paymentSelect = document.getElementById('payment_method_select');
+  if (paymentSelect) {
+    paymentSelect.addEventListener('change', function () {
+      document.getElementById('payment_method_input').value = this.value;
+    });
+  }
+</script>

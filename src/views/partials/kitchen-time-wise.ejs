@@ -1,0 +1,18 @@
+<%
+const tableNames = Object.keys(byTable || {});
+%>
+<% if (!tableNames.length) { %>
+  <div class="alert"><%= noOrdersMessage %></div>
+<% } else { %>
+  <% tableNames.forEach(function(name) { %>
+    <div class="card">
+      <h4><%= name %></h4>
+      <% byTable[name].forEach(function(o) { %>
+        <div class="item-row">
+          <div><%= o.item ? o.item.item_name : 'Item #' + o.item_id %> x<%= o.quantity %></div>
+          <div><%= o.time %></div>
+        </div>
+      <% }) %>
+    </div>
+  <% }) %>
+<% } %>

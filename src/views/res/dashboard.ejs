@@ -1,0 +1,25 @@
+<style>
+  .welcome-card { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:28px; background:linear-gradient(120deg,#fff 0%,#fff7ed 100%); border-color:#fed7aa; }
+  .welcome-card h2 { margin-bottom:7px; font-size:25px; } .welcome-card p { margin:0; color:#677489; }
+  .quick-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+  .quick-link { display:block; padding:17px; border:1px solid var(--line); border-radius:12px; background:#fff; color:var(--ink); text-decoration:none; transition:transform .15s,box-shadow .15s,border-color .15s; }
+  .quick-link:hover { transform:translateY(-2px); border-color:#fdba74; box-shadow:var(--shadow); } .quick-link strong,.quick-link span { display:block; } .quick-link strong { margin-top:12px; font-size:14px; } .quick-link span { color:var(--muted); font-size:12px; margin-top:4px; } .quick-icon { font-size:20px; }
+  @media(max-width:700px) { .welcome-card { align-items:flex-start; flex-direction:column; } .quick-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+</style>
+<section class="card welcome-card"><div><h2>Good to see you, <%= currentUser.name %>.</h2><p>Everything you need to keep today’s service moving.</p></div><a class="btn" href="/menus/create">+ Add menu item</a></section>
+<section class="quick-grid" aria-label="Restaurant summary">
+  <div class="quick-link"><span class="quick-icon">$</span><strong>$<%= stats.sales.toFixed(2) %> sales</strong><span><%= stats.completedOrders %> completed orders</span></div>
+  <div class="quick-link"><span class="quick-icon">◷</span><strong>$<%= stats.averageTicket.toFixed(2) %> average ticket</strong><span>Completed order average</span></div>
+  <div class="quick-link"><span class="quick-icon">▦</span><strong><%= stats.activeTables %> active tables</strong><span>Live dining floor</span></div>
+  <div class="quick-link"><span class="quick-icon">☷</span><strong><%= stats.menuCount %> menu items</strong><span><%= stats.soldOutCount %> currently sold out</span></div>
+  <div class="quick-link"><span class="quick-icon">♨</span><strong><%= stats.kitchenQueue %> kitchen items</strong><span>Waiting or in preparation</span></div>
+</section>
+<section class="quick-grid" aria-label="Quick actions">
+  <a class="quick-link" href="/customers"><span class="quick-icon">♙</span><strong>Customers</strong><span>Review guest history and notes.</span></a>
+  <a class="quick-link" href="/menus"><span class="quick-icon">☷</span><strong>Manage menu</strong><span>Add and organise dishes.</span></a>
+  <a class="quick-link" href="/tables"><span class="quick-icon">▦</span><strong>Table setup</strong><span>Update dining tables.</span></a>
+  <a class="quick-link" href="/order-summary"><span class="quick-icon">▤</span><strong>Order summary</strong><span>Review sales performance.</span></a>
+  <a class="quick-link" href="/inventory"><span class="quick-icon">◈</span><strong>Inventory</strong><span>Track ingredients and stock.</span></a>
+  <a class="quick-link" href="/counter-admin/<%= currentUser.slug %>/counter"><span class="quick-icon">▣</span><strong>Counter</strong><span>Manage live table orders.</span></a>
+  <a class="quick-link" href="/kitchen-admin/kitchen"><span class="quick-icon">♨</span><strong>Kitchen board</strong><span>Keep the pass in sync.</span></a>
+</section>

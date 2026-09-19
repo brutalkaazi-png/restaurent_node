@@ -1,0 +1,13 @@
+Remaining major areas include:
+
+Multi-tenant restaurant and branch isolation
+Reservations: implemented with tenant/branch scoping, table assignment, conflict checks, status workflow, and owner UI
+CRM: implemented tenant-scoped customer profiles, checkout sync, search, notes, visit/spend metrics, and order history; loyalty and memberships remain
+Recipes, food costing, suppliers, purchasing, and expenses
+Employee permissions, attendance, and shifts
+Advanced POS: split bills, refunds, taxes, tips, transfers, receipts
+Multi-branch inventory and reporting
+Notifications and audit logs
+Subscription billing, plans, trials, renewals, and limits
+Real payment gateway, email, SMS, and third-party integrations
+The current project already covers authentication, menu/table management, QR ordering, online checkout, kitchen/bar/counter workflows, inventory, reports, promotions, discounts, superadmin basics, realtime updates, and the recent dashboard/sold-out work.

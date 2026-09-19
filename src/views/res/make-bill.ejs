@@ -1,0 +1,57 @@
+<%
+let subtotal = 0;
+%>
+<style>
+  .bill-items-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+  .bill-items-table th, .bill-items-table td { padding: 8px 5px; text-align: left; border-bottom: 1px solid #eee; }
+</style>
+<div class="card">
+  <h2><%= restaurant.name %></h2>
+  <p>Table: <%= table.table_name %></p>
+
+  <table class="bill-items-table">
+    <thead><tr><th></th><th>Qty</th><th>Item</th><th>Rate</th><th>Total</th></tr></thead>
+    <tbody>
+      <% orders.forEach(function(order) { %>
+        <% const itemTotal = order.quantity * parseFloat(order.price); subtotal += itemTotal; %>
+        <tr>
+          <td><input type="checkbox" class="bill-item-checkbox" value="<%= order.id %>" checked></td>
+          <td><%= order.quantity %></td>
+          <td><%= order.item ? order.item.item_name : 'N/A' %><% if (order.variant) { %> (<%= order.variant.name %>)<% } %></td>
+          <td><%= parseFloat(order.price).toFixed(2) %></td>
+          <td><%= itemTotal.toFixed(2) %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <div class="item-row">
+    <label>Discount %</label>
+    <input type="number" id="discount-percent" value="0" style="width:80px;">
+  </div>
+  <div class="item-row">
+    <label>Tax %</label>
+    <input type="number" id="tax-percent" value="0" style="width:80px;">
+  </div>
+  <div class="item-row"><strong>Subtotal</strong><strong id="subtotal"><%= subtotal.toFixed(2) %></strong></div>
+
+  <button type="button" class="btn" id="complete-order-btn" style="width:100%;">Complete order</button>
+</div>
+
+<script>
+  const tableId = <%= table.id %>;
+  document.getElementById('complete-order-btn').addEventListener('click', () => {
+    const itemIds = Array.from(document.querySelectorAll('.bill-item-checkbox:checked')).map(cb => cb.value);
+    fetch(`/counter-admin/complete_order/${tableId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        item_ids: itemIds,
+        discount_percent: document.getElementById('discount-percent').value,
+        tax_percent: document.getElementById('tax-percent').value,
+      }),
+    }).then(r => r.json()).then(data => {
+      if (data.success) window.location = '/counter-admin/' + '<%= restaurant.slug %>' + '/counter';
+    });
+  });
+</script>

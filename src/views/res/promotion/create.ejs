@@ -1,0 +1,63 @@
+<%
+const DAYS = ['All Day', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function toHHMM(t) { return t ? t.slice(0, 5) : ''; }
+%>
+<div class="card">
+  <h2><%= promotion ? 'Edit' : 'Add' %> promotion</h2>
+  <% if (errors && errors.length) { %>
+    <div class="message"><% errors.forEach(function(e) { %><div><%= e %></div><% }) %></div>
+  <% } %>
+
+  <form method="POST" action="/promotions">
+    <% if (promotion) { %><input type="hidden" name="promotion_id" value="<%= promotion.id %>"><% } %>
+
+    <label>Name</label>
+    <input type="text" name="name" value="<%= promotion ? promotion.name : '' %>" required>
+
+    <label>Start date</label>
+    <input type="date" name="start_date" value="<%= promotion ? promotion.start_date : '' %>" required>
+
+    <label>End date</label>
+    <input type="date" name="end_date" value="<%= promotion ? promotion.end_date : '' %>" required>
+
+    <label>Start time (optional - leave blank for "All Time")</label>
+    <input type="time" name="start_time" value="<%= promotion ? toHHMM(promotion.start_time) : '' %>">
+
+    <label>End time (optional)</label>
+    <input type="time" name="end_time" value="<%= promotion ? toHHMM(promotion.end_time) : '' %>">
+
+    <label>Status</label>
+    <select name="is_active">
+      <option value="Active" <%= promotion && promotion.is_active === 'Active' ? 'selected' : '' %>>Active</option>
+      <option value="Inactive" <%= promotion && promotion.is_active === 'Inactive' ? 'selected' : '' %>>Inactive</option>
+    </select>
+
+    <label>Days</label>
+    <% DAYS.forEach(function(day) { %>
+      <label style="display:block;">
+        <input type="checkbox" name="days" value="<%= day %>" style="width:auto;display:inline-block;"
+          <%= promotion && promotion.days && promotion.days.includes(day) ? 'checked' : '' %>>
+        <%= day %>
+      </label>
+    <% }) %>
+
+    <label style="margin-top:12px;">Items and offer price</label>
+    <% categories.forEach(function(cat) { %>
+      <strong><%= cat.category_name %></strong>
+      <% (cat.items || []).forEach(function(item) { %>
+        <div class="item-row">
+          <label style="flex:1;">
+            <input type="checkbox" name="item_ids" value="<%= item.id %>" style="width:auto;display:inline-block;"
+              <%= promotionItems[item.id] !== undefined ? 'checked' : '' %>>
+            <%= item.item_name %> (regular $<%= parseFloat(item.price || 0).toFixed(2) %>)
+          </label>
+          <input type="number" step="0.01" name="offer_price_<%= item.id %>" placeholder="Offer price"
+            value="<%= promotionItems[item.id] !== undefined ? promotionItems[item.id] : '' %>" style="width:110px;">
+        </div>
+      <% }) %>
+    <% }) %>
+
+    <button class="btn" type="submit" style="margin-top:12px;">Save</button>
+    <a class="btn btn-secondary" href="/promotions">Cancel</a>
+  </form>
+</div>

@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd /Volumes/gtech_ssd/other/node/restroapp && python3 - <<'PY'\nfrom pathlib import Path\ntry:\n    import PyPDF2\n    p = Path\\('todo/todo\\.pdf'\\)\n    reader = PyPDF2\\.PdfReader\\(str\\(p\\)\\)\n    print\\('pages', len\\(reader\\.pages\\)\\)\n    for i, page in enumerate\\(reader\\.pages, 1\\):\n        txt = page\\.extract_text\\(\\) or ''\n        if txt\\.strip\\(\\):\n            print\\(f'===== PAGE \\{i\\} =====\\\\n\\{txt\\[:5000\\]\\}\\\\n'\\)\nexcept Exception as e:\n    print\\('ERR', type\\(e\\)\\.__name__, e\\)\nPY$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

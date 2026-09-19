@@ -1,0 +1,21 @@
+<div class="card">
+  <h2><%= item ? item.item_name : 'Item #' + itemDetails[0]?.item_id %> - order history</h2>
+</div>
+
+<% if (!itemDetails.length) { %>
+  <div class="card">No orders found for this item in this period.</div>
+<% } %>
+<% itemDetails.forEach(function(oi) { %>
+  <div class="card">
+    <div class="item-row">
+      <div>Order #<%= oi.order_id %> &middot; qty <%= oi.qty %></div>
+      <div><%= setting.currency || '$' %><%= parseFloat(oi.total).toFixed(2) %></div>
+    </div>
+  </div>
+<% }) %>
+
+<div class="card">
+  <% for (let p = 1; p <= totalPages; p++) { %>
+    <a class="btn <%= p === page ? '' : 'btn-secondary' %>" href="?page=<%= p %>&date_period=<%= datePeriod %>&selected_date=<%= dateRange %>"><%= p %></a>
+  <% } %>
+</div>

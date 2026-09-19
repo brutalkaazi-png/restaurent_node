@@ -1,0 +1,11 @@
+<div class="card">
+  <h2>Edit setting</h2>
+  <form method="POST" action="/superadmin/setting/<%= setting.id %>">
+    <label>Name</label>
+    <input type="text" name="option_name" value="<%= setting.option_name %>">
+    <label>Value</label>
+    <input type="text" name="option_value" value="<%= setting.option_value %>">
+    <button class="btn" type="submit">Save</button>
+    <a class="btn btn-secondary" href="/superadmin/setting">Cancel</a>
+  </form>
+</div>

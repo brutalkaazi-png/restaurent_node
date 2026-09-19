@@ -1,0 +1,28 @@
+<div class="card">
+  <div class="item-row">
+    <h2>Promotions</h2>
+    <a class="btn" href="/promotions/create">+ Add promotion</a>
+  </div>
+</div>
+<% if (!promotions.length) { %>
+  <div class="card">No promotions yet.</div>
+<% } %>
+<% promotions.forEach(function(p) { %>
+  <div class="card">
+    <div class="item-row">
+      <div>
+        <strong><%= p.name %></strong>
+        <div style="font-size:0.85em;color:#777;">
+          <%= p.start_date %> &rarr; <%= p.end_date %> &middot; <span class="item-status"><%= p.is_active %></span>
+        </div>
+        <div style="font-size:0.85em;">Days: <%= (p.days || []).join(', ') %></div>
+      </div>
+      <div>
+        <a class="btn" href="/promotions/<%= p.id %>/edit">Edit</a>
+        <form method="POST" action="/promotions/<%= p.id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this promotion?');">
+          <button type="submit" class="btn btn-secondary">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+<% }) %>

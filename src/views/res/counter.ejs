@@ -1,0 +1,81 @@
+<style>
+  #table-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+  .table-card { margin:0; } .table-card[data-status="available"] { border-color:#86efac; }
+  .table-card[data-status="occupied"],.table-card[data-status="ordered"] { border-color:#fbbf24; }
+  .table-card[data-status="preparing"] { border-color:#fb923c; } .table-card[data-status="served"] { border-color:#60a5fa; }
+  .table-status { text-transform:capitalize; } .table-elapsed { color:#687386; font-size:12px; }
+  .counter-empty { color:#687386; text-align:center; }
+</style>
+
+<div class="card">
+  <h2><%= restaurant.name %> - Counter</h2>
+  <p>Live table status and open-order billing.</p>
+</div>
+
+<div id="table-grid">
+  <% if (!tables.length) { %><div class="card counter-empty" role="status">No tables have been configured.</div><% } %>
+  <% tables.forEach(function(table) { %>
+    <div class="card table-card" data-table-id="<%= table.id %>" data-status="<%= table.status %>">
+      <div class="item-row">
+        <strong><%= table.table_name %></strong>
+        <span class="item-status table-status"><%= table.status %></span>
+      </div>
+      <div class="table-elapsed" data-start-time><%= table.status === 'available' ? 'Ready for guests' : 'Updating...' %></div>
+      <button type="button" class="btn view-table-btn" data-table-id="<%= table.id %>">View orders</button>
+    </div>
+  <% }) %>
+</div>
+
+<div id="table-orders-panel"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const restaurantId = <%= restaurant.id %>;
+
+  function refreshTables() {
+    fetch(`/counter-admin/get_table_updates/${restaurantId}`)
+      .then(r => { if (!r.ok) throw new Error('Table status request failed'); return r.json(); })
+      .then(data => {
+        data.tables.forEach(t => {
+          const card = document.querySelector(`.table-card[data-table-id="${t.id}"]`);
+          if (!card) return;
+          card.dataset.status = t.status;
+          const status = card.querySelector('.table-status');
+          if (status) status.textContent = t.status.replaceAll('_', ' ');
+          const elapsed = card.querySelector('[data-start-time]');
+          if (elapsed) elapsed.textContent = t.start_time ? `Open since ${new Date(t.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Ready for guests';
+        });
+      })
+      .catch(() => {});
+  }
+
+  // Fallback poll in case the socket connection drops - live updates below
+  // make this rarely necessary, but it's cheap insurance.
+  setInterval(refreshTables, 30000);
+
+  const socket = io();
+  socket.emit('join-restaurant', restaurantId);
+  socket.on('restaurant-update', () => {
+    refreshTables();
+    // Also refresh whichever table's order panel is currently open, and
+    // the online-orders panel if it's open, so a live status change or a
+    // new order shows up without the staff member re-clicking anything.
+    const openPanel = document.getElementById('table-orders-panel');
+    const openTableId = openPanel && openPanel.dataset.tableId;
+    if (openTableId) {
+      fetch(`/counter-admin/get_table_orders/${openTableId}`).then(r => r.text()).then(html => { openPanel.innerHTML = html; });
+    }
+  });
+
+  document.querySelectorAll('.view-table-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      fetch(`/counter-admin/get_table_orders/${btn.dataset.tableId}`)
+        .then(r => r.text())
+        .then(html => {
+          const panel = document.getElementById('table-orders-panel');
+          panel.innerHTML = html;
+          panel.dataset.tableId = btn.dataset.tableId;
+        });
+    });
+  });
+</script>

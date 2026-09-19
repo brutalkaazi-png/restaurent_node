@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" role="img" aria-labelledby="title desc">
+  <title id="title">Starters category</title>
+  <desc id="desc">Illustrated plate of golden starters with herbs.</desc>
+  <rect width="800" height="420" fill="#fff7ed"/>
+  <circle cx="400" cy="230" r="145" fill="#fed7aa"/>
+  <circle cx="400" cy="230" r="108" fill="#fff" stroke="#f97316" stroke-width="8"/>
+  <g fill="#d97706" stroke="#92400e" stroke-width="4"><path d="M315 210l52-50 52 50-52 50z"/><path d="M395 245l52-50 52 50-52 50z"/><path d="M355 290l52-50 52 50-52 50z"/></g>
+  <g fill="#65a30d"><ellipse cx="285" cy="120" rx="16" ry="8" transform="rotate(-30 285 120)"/><ellipse cx="515" cy="145" rx="16" ry="8" transform="rotate(35 515 145)"/></g>
+  <text x="400" y="72" text-anchor="middle" fill="#9a3412" font-family="Georgia,serif" font-size="42">STARTERS</text>
+</svg>

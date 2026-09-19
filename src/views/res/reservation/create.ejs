@@ -1,0 +1,14 @@
+<div class="card"><h2><%= reservation ? 'Edit' : 'Add' %> reservation</h2>
+<% if (errors.length) { %><div class="message"><% errors.forEach((error) => { %><div><%= error %></div><% }) %></div><% } %>
+<form method="POST" action="/reservations">
+<% if (reservation && reservation.id) { %><input type="hidden" name="id" value="<%= reservation.id %>"><% } %>
+<label for="customer-name">Customer name</label><input id="customer-name" name="customer_name" required value="<%= reservation ? reservation.customer_name || '' : '' %>">
+<label for="customer-phone">Phone</label><input id="customer-phone" name="customer_phone" value="<%= reservation ? reservation.customer_phone || '' : '' %>">
+<label for="customer-email">Email</label><input id="customer-email" type="email" name="customer_email" value="<%= reservation ? reservation.customer_email || '' : '' %>">
+<label for="guest-count">Guests</label><input id="guest-count" type="number" min="1" name="guest_count" required value="<%= reservation ? reservation.guest_count || 1 : 1 %>">
+<label for="table-id">Table</label><select id="table-id" name="table_id"><option value="">Assign later</option><% tables.forEach((table) => { %><option value="<%= table.id %>" <%= reservation && String(reservation.table_id) === String(table.id) ? 'selected' : '' %>><%= table.table_name %></option><% }) %></select>
+<label for="starts-at">Starts</label><input id="starts-at" type="datetime-local" name="starts_at" required value="<%= reservation && reservation.starts_at ? new Date(reservation.starts_at).toISOString().slice(0,16) : '' %>">
+<label for="ends-at">Ends</label><input id="ends-at" type="datetime-local" name="ends_at" required value="<%= reservation && reservation.ends_at ? new Date(reservation.ends_at).toISOString().slice(0,16) : '' %>">
+<label for="notes">Special requests</label><textarea id="notes" name="notes"><%= reservation ? reservation.notes || '' : '' %></textarea>
+<button class="btn" type="submit">Save reservation</button><a class="btn btn-secondary" href="/reservations">Cancel</a>
+</form></div>

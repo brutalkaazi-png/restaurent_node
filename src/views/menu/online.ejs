@@ -1,0 +1,56 @@
+<% function mediaUrl(path) { return path ? (path.startsWith('assets/') ? '/' + path : '/uploads/' + path) : ''; } %>
+<div class="card">
+  <% if (restaurant.logo) { %><img src="<%= mediaUrl(restaurant.logo) %>" alt="<%= restaurant.name %>" style="width:72px;height:48px;object-fit:cover;border-radius:8px;"> <% } %>
+  <h2><%= restaurant.name %></h2>
+  <p><%= restaurant.address %> &middot; Delivery/Pickup ordering</p>
+</div>
+
+<% if (!allMenus.length) { %>
+  <p>No menu items available.</p>
+<% } else { %>
+  <% categories.forEach(function(cat) { %>
+    <div class="card">
+      <% if (cat.category_image) { %><img src="<%= mediaUrl(cat.category_image) %>" alt="<%= cat.category_name %>" style="width:100%;max-height:150px;object-fit:cover;border-radius:8px;"> <% } %>
+      <h3><%= cat.category_name %></h3>
+      <% allMenus.filter(function(item){ return item.item_category === cat.id }).forEach(function(item) { %>
+        <div class="item-row">
+          <div>
+            <% if (item.item_image) { %><img src="<%= mediaUrl(item.item_image) %>" alt="<%= item.item_name %>" style="width:96px;height:72px;object-fit:cover;border-radius:8px;margin-bottom:6px;"> <% } %>
+            <strong><%= item.item_name %></strong><br>
+            <% if (item.sold_out) { %><small style="color:#be123c;font-weight:700;">Sold out</small><br><% } %>
+            <small><%= item.item_description || '' %></small><br>
+            <% if (item.variants && item.variants.length) { %>
+              <small>From $<%= Math.min(...item.variants.map(v => parseFloat(v.price))).toFixed(2) %></small>
+            <% } else if (item.discounted_price !== null && item.discounted_price !== undefined) { %>
+              <small><s>$<%= parseFloat(item.price).toFixed(2) %></s> <strong style="color:#28a745;">$<%= item.discounted_price.toFixed(2) %></strong> (<%= item.active_discount.discount_percentage %>% off now)</small>
+            <% } else { %>
+              <small>$<%= parseFloat(item.price).toFixed(2) %></small>
+            <% } %>
+          </div>
+          <button class="btn add-item-btn" data-item-id="<%= item.id %>" <%= item.sold_out ? 'disabled aria-label="Sold out"' : '' %>><%= item.sold_out ? 'Sold out' : 'Add' %></button>
+        </div>
+      <% }) %>
+    </div>
+  <% }) %>
+<% } %>
+
+<div class="card" id="cart-summary">
+  <a class="btn" href="/checkout" id="view-cart-btn">Go to checkout</a>
+</div>
+
+<script>
+  document.querySelectorAll('.add-item-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      fetch('/add-to-cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: [{ item_id: btn.dataset.itemId, quantity: 1 }] }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('cart-summary').innerHTML =
+            '<a class="btn" href="/checkout">Go to checkout (' + data.totalItem + ' item(s))</a>';
+        });
+    });
+  });
+</script>

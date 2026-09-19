@@ -1,0 +1,38 @@
+<%
+const entries = Object.entries(cart || {});
+const total = entries.reduce((sum, [, c]) => sum + c.price * c.quantity, 0);
+%>
+<div class="card">
+  <h3>Your cart</h3>
+  <p><%= restaurantName %> &middot; <%= restaurantAddress %></p>
+
+  <% if (!entries.length) { %>
+    <p class="text-muted">Your cart is empty.</p>
+  <% } %>
+
+  <% entries.forEach(function([key, c]) { %>
+    <div class="item-row">
+      <div>
+        <%= c.quantity %> x <%= c.name %>
+        <% if (c.comment) { %><br><small>Note: <%= c.comment %></small><% } %>
+        <% if (c.toppings && c.toppings.length) { %><br><small>+ <%= c.toppings.map(t => t.name).join(', ') %></small><% } %>
+      </div>
+      <div>
+        $<%= (c.price * c.quantity).toFixed(2) %>
+        <button type="button" class="cart-remove-btn" data-key="<%= key %>">&times;</button>
+      </div>
+    </div>
+  <% }) %>
+
+  <% if (entries.length) { %>
+    <div class="item-row"><strong>Total</strong><strong><%= total.toFixed(2) %></strong></div>
+  <% } %>
+</div>
+
+<script>
+  document.querySelectorAll('.cart-remove-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      fetch(`/delete_order/${encodeURIComponent(btn.dataset.key)}`).then(() => location.reload());
+    });
+  });
+</script>

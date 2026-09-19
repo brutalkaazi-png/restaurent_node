@@ -1,0 +1,41 @@
+<div class="card">
+  <h2>Stock report</h2>
+  <form method="GET" action="/inventory-report">
+    <label>Period</label>
+    <select name="date_period">
+      <option value="daily" <%= datePeriod === 'daily' ? 'selected' : '' %>>Daily</option>
+      <option value="weekly" <%= datePeriod === 'weekly' ? 'selected' : '' %>>Weekly</option>
+      <option value="monthly" <%= datePeriod === 'monthly' ? 'selected' : '' %>>Monthly</option>
+      <option value="yearly" <%= datePeriod === 'yearly' ? 'selected' : '' %>>Yearly</option>
+      <option value="custom" <%= datePeriod === 'custom' ? 'selected' : '' %>>Custom (from|to)</option>
+    </select>
+    <label>Date (format depends on period: YYYY-MM-DD / MM-YYYY / YYYY / YYYY-MM-DD|YYYY-MM-DD)</label>
+    <input type="text" name="selected_date" value="<%= dateRange %>">
+    <button class="btn" type="submit">Apply</button>
+  </form>
+</div>
+
+<div class="card">
+  <table style="width:100%;border-collapse:collapse;">
+    <thead>
+      <tr>
+        <th style="text-align:left;">Item</th>
+        <th style="text-align:right;">Opening</th>
+        <th style="text-align:right;">In</th>
+        <th style="text-align:right;">Out</th>
+        <th style="text-align:right;">Closing</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% reportData.forEach(function(row) { %>
+        <tr>
+          <td><%= row.name %> (<%= row.unit %>)</td>
+          <td style="text-align:right;"><%= row.opening_stock %></td>
+          <td style="text-align:right;color:#28a745;">+<%= row.stock_in %></td>
+          <td style="text-align:right;color:#a33;">-<%= row.stock_out %></td>
+          <td style="text-align:right;"><strong><%= row.closing_stock %></strong></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

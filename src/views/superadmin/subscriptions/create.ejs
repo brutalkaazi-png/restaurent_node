@@ -1,0 +1,18 @@
+<div class="card">
+  <h2><%= subscription ? 'Edit' : 'Add' %> subscription plan</h2>
+  <form method="POST" action="/superadmin/subscriptions" enctype="multipart/form-data">
+    <% if (subscription) { %><input type="hidden" name="id" value="<%= subscription.id %>"><% } %>
+    <label>Name</label>
+    <input type="text" name="name" value="<%= subscription ? subscription.name : '' %>" required>
+    <label>Type (optional)</label>
+    <input type="text" name="subscription_type" value="<%= subscription ? (subscription.subscription_type || '') : '' %>">
+    <label>Duration (months)</label>
+    <input type="number" name="month" value="<%= subscription ? subscription.month : '' %>" required>
+    <label>Cost</label>
+    <input type="text" name="cost" value="<%= subscription ? subscription.cost : '' %>" required>
+    <label>Image</label>
+    <input type="file" name="image" accept="image/*">
+    <button class="btn" type="submit">Save</button>
+    <a class="btn btn-secondary" href="/superadmin/subscriptions">Cancel</a>
+  </form>
+</div>

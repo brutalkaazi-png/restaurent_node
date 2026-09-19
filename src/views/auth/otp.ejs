@@ -1,0 +1,13 @@
+<div class="card">
+  <h2>Verify your account</h2>
+  <p>Enter the OTP we sent to your email address.</p>
+  <% if (typeof message !== 'undefined' && message) { %>
+    <div class="message"><%= message %></div>
+  <% } %>
+  <form method="POST" action="/otp-store">
+    <input type="hidden" name="id" value="<%= id %>">
+    <label>OTP code</label>
+    <input type="text" name="otp" required>
+    <button class="btn" type="submit">Verify</button>
+  </form>
+</div>

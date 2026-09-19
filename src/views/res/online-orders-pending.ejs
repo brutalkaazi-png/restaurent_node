@@ -1,0 +1,35 @@
+<% if (!orders.length) { %>
+  <div class="alert">No pending online orders.</div>
+<% } else { %>
+  <% orders.forEach(function(order) { %>
+    <div class="card">
+      <div class="item-row">
+        <strong>Order #<%= order.id %></strong>
+        <span><%= order.name %></span>
+      </div>
+      <% (order.order_items || []).forEach(function(oi) { %>
+        <div class="item-row">
+          <div><%= oi.item ? oi.item.item_name : 'Item #' + oi.item_id %> x<%= oi.qty %></div>
+          <div><%= parseFloat(oi.total).toFixed(2) %></div>
+        </div>
+      <% }) %>
+      <div style="margin-top:8px;">
+        <button type="button" class="approve-order-btn btn" data-order-id="<%= order.id %>">Approve</button>
+        <button type="button" class="decline-order-btn btn btn-secondary" data-order-id="<%= order.id %>">Decline</button>
+      </div>
+    </div>
+  <% }) %>
+<% } %>
+
+<script>
+  document.querySelectorAll('.approve-order-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      fetch(`/counter-admin/approve-order/${btn.dataset.orderId}`, { method: 'POST' }).then(() => location.reload());
+    });
+  });
+  document.querySelectorAll('.decline-order-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      fetch(`/counter-admin/decline-order/${btn.dataset.orderId}`, { method: 'POST' }).then(() => location.reload());
+    });
+  });
+</script>

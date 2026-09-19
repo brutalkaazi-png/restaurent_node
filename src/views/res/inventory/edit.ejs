@@ -1,0 +1,15 @@
+<div class="card">
+  <h2>Edit inventory item</h2>
+  <% if (errors && errors.length) { %>
+    <div class="message"><% errors.forEach(function(e) { %><div><%= e %></div><% }) %></div>
+  <% } %>
+  <form method="POST" action="/inventory/<%= item.id %>">
+    <label>Name</label>
+    <input type="text" name="name" value="<%= item.name %>" required>
+    <label>Unit</label>
+    <input type="text" name="unit" value="<%= item.unit %>" required>
+    <p><small>Current quantity: <%= item.quantity %> <%= item.unit %> (use Stock in/out to change this, not this form)</small></p>
+    <button class="btn" type="submit">Save</button>
+    <a class="btn btn-secondary" href="/inventory">Cancel</a>
+  </form>
+</div>

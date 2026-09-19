@@ -1,0 +1,39 @@
+<div class="card">
+  <div class="item-row">
+    <h2>Inventory</h2>
+    <a class="btn" href="/inventory/create">+ Add item</a>
+  </div>
+  <a class="btn btn-secondary" href="/inventory-report">View stock report</a>
+</div>
+
+<% if (!items.length) { %>
+  <div class="card">No inventory items yet.</div>
+<% } %>
+
+<% items.forEach(function(item) { %>
+  <div class="card">
+    <div class="item-row">
+      <div>
+        <strong><%= item.name %></strong>
+        <div style="font-size:0.85em;color:#777;"><%= item.quantity %> <%= item.unit %> in stock</div>
+      </div>
+      <div>
+        <a class="btn" href="/inventory/<%= item.id %>/stock-in">+ Stock in</a>
+        <a class="btn btn-secondary" href="/inventory/<%= item.id %>/stock-out">- Stock out</a>
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <a class="btn btn-secondary" href="/inventory/<%= item.id %>/history">History</a>
+      <a class="btn btn-secondary" href="/inventory/<%= item.id %>/edit">Edit</a>
+      <form method="POST" action="/inventory/<%= item.id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this item?');">
+        <button type="submit" class="btn btn-secondary">Delete</button>
+      </form>
+    </div>
+  </div>
+<% }) %>
+
+<div class="card">
+  <% for (let p = 1; p <= totalPages; p++) { %>
+    <a class="btn <%= p === page ? '' : 'btn-secondary' %>" href="?page=<%= p %>"><%= p %></a>
+  <% } %>
+</div>

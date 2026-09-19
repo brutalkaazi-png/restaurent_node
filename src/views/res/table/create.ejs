@@ -1,0 +1,15 @@
+<div class="card">
+  <h2><%= table ? 'Edit' : 'Add' %> table</h2>
+  <form method="POST" action="/tables">
+    <% if (table) { %><input type="hidden" name="id" value="<%= table.id %>"><% } %>
+
+    <label>Table name</label>
+    <input type="text" name="name" value="<%= table ? table.table_name : '' %>" required>
+
+    <label>Custom slug (optional - used in the ordering URL)</label>
+    <input type="text" name="slug" value="<%= table ? table.table_slug : '' %>">
+
+    <button class="btn" type="submit">Save</button>
+    <a class="btn btn-secondary" href="/tables">Cancel</a>
+  </form>
+</div>

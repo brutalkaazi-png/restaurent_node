@@ -1,0 +1,28 @@
+<div class="card">
+  <div class="item-row">
+    <h2>Waiters</h2>
+    <a class="btn" href="/waiters/create">+ Add waiter</a>
+  </div>
+</div>
+
+<% if (!waiters.length) { %>
+  <div class="card">No waiters yet.</div>
+<% } %>
+
+<% waiters.forEach(function(w) { %>
+  <div class="card">
+    <div class="item-row">
+      <div>
+        <strong><%= w.name %></strong>
+        <div style="font-size:0.85em;color:#777;"><%= w.email %></div>
+        <% if (w.address) { %><div style="font-size:0.85em;"><%= w.address %></div><% } %>
+      </div>
+      <div>
+        <a class="btn" href="/waiters/<%= w.id %>/edit">Edit</a>
+        <form method="POST" action="/waiters/<%= w.id %>/delete" style="display:inline;" onsubmit="return confirm('Remove this waiter?');">
+          <button type="submit" class="btn btn-secondary">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+<% }) %>

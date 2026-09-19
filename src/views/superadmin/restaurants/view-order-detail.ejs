@@ -1,0 +1,12 @@
+<div class="card">
+  <h2>Order history</h2>
+  <% if (!orderDetails.length) { %>
+    <p>No orders yet.</p>
+  <% } %>
+  <% orderDetails.forEach(function(oi) { %>
+    <div class="item-row">
+      <div><%= oi.item ? oi.item.item_name : 'Item #' + oi.item_id %> x<%= oi.qty %></div>
+      <div><%= setting.currency || '$' %><%= parseFloat(oi.total).toFixed(2) %></div>
+    </div>
+  <% }) %>
+</div>

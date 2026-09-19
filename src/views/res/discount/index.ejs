@@ -1,0 +1,30 @@
+<div class="card">
+  <div class="item-row">
+    <h2>Discounts</h2>
+    <a class="btn" href="/discounts/create">+ Add discount</a>
+  </div>
+</div>
+<% if (!discounts.length) { %>
+  <div class="card">No discounts yet.</div>
+<% } %>
+<% discounts.forEach(function(d) { %>
+  <div class="card">
+    <div class="item-row">
+      <div>
+        <strong><%= d.discount_percentage %>% off</strong>
+        <div style="font-size:0.85em;color:#777;">
+          <%= d.start_time %> - <%= d.end_time %> on <%= (d.days || []).join(', ') %>
+        </div>
+        <div style="font-size:0.85em;">
+          Items: <%= (d.items || []).map(function(i){ return i.item_name; }).join(', ') %>
+        </div>
+      </div>
+      <div>
+        <a class="btn" href="/discounts/<%= d.id %>/edit">Edit</a>
+        <form method="POST" action="/discounts/<%= d.id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this discount?');">
+          <button type="submit" class="btn btn-secondary">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+<% }) %>

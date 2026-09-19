@@ -1,0 +1,47 @@
+<%
+function toHHMM(t) {
+  if (!t) return '';
+  return t.slice(0, 5); // "HH:MM:SS" -> "HH:MM" for <input type=time>
+}
+%>
+<div class="card">
+  <h2><%= discount ? 'Edit' : 'Add' %> discount</h2>
+  <% if (errors && errors.length) { %>
+    <div class="message"><% errors.forEach(function(e) { %><div><%= e %></div><% }) %></div>
+  <% } %>
+
+  <form method="POST" action="<%= discount ? '/discounts/' + discount.id : '/discounts' %>">
+    <label>Start time</label>
+    <input type="time" name="start_time" value="<%= discount ? toHHMM(discount.start_time) : '' %>" required>
+
+    <label>End time</label>
+    <input type="time" name="end_time" value="<%= discount ? toHHMM(discount.end_time) : '' %>" required>
+
+    <label>Discount percentage</label>
+    <input type="number" name="discount_percentage" min="1" max="100" value="<%= discount ? discount.discount_percentage : '' %>" required>
+
+    <label>Days</label>
+    <% days.forEach(function(day) { %>
+      <label style="display:block;">
+        <input type="checkbox" name="days" value="<%= day %>" style="width:auto;display:inline-block;"
+          <%= discount && discount.days && discount.days.includes(day) ? 'checked' : '' %>>
+        <%= day %>
+      </label>
+    <% }) %>
+
+    <label style="margin-top:12px;">Items (discount applies to the base price only, not variants)</label>
+    <% categories.forEach(function(cat) { %>
+      <strong><%= cat.category_name %></strong>
+      <% (cat.items || []).forEach(function(item) { %>
+        <label style="display:block;">
+          <input type="checkbox" name="item_ids" value="<%= item.id %>" style="width:auto;display:inline-block;"
+            <%= discountItems.includes(item.id) ? 'checked' : '' %>>
+          <%= item.item_name %>
+        </label>
+      <% }) %>
+    <% }) %>
+
+    <button class="btn" type="submit" style="margin-top:12px;">Save</button>
+    <a class="btn btn-secondary" href="/discounts">Cancel</a>
+  </form>
+</div>

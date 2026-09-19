@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-labelledby="title desc">
+  <title id="title">Iced tea</title>
+  <desc id="desc">Fresh lemon iced tea in a tall glass.</desc>
+  <rect width="800" height="500" fill="#ecfeff"/>
+  <path d="M300 130h180l-24 280H324z" fill="#f59e0b" stroke="#92400e" stroke-width="10"/>
+  <path d="M315 220h150M310 285h150" stroke="#fef3c7" stroke-width="13" opacity=".9"/>
+  <path d="M395 130L500 45" stroke="#65a30d" stroke-width="13" stroke-linecap="round"/>
+  <circle cx="500" cy="45" r="42" fill="#fde68a" stroke="#ca8a04" stroke-width="8"/>
+  <text x="400" y="90" text-anchor="middle" fill="#155e75" font-family="Georgia,serif" font-size="46">ICED TEA</text>
+</svg>

@@ -1,0 +1,31 @@
+<%
+const grandTotal = (orderDetails || []).reduce((sum, d) => sum + d.quantity * parseFloat(d.price), 0);
+%>
+<div class="card">
+  <h3>Bill Requested</h3>
+  <p><strong>Thank you!</strong> Your bill has been requested successfully.</p>
+  <p>Please proceed to the counter to complete your payment.</p>
+</div>
+
+<div class="card">
+  <h3>Restaurant Details</h3>
+  <p><strong><%= restaurant.name %></strong></p>
+  <p>Table: <strong><%= table.table_name %></strong></p>
+</div>
+
+<% if (orderDetails && orderDetails.length) { %>
+  <div class="card">
+    <h3>Order Summary</h3>
+    <% orderDetails.forEach(function(detail) { %>
+      <div class="item-row">
+        <div>
+          <%= detail.item ? detail.item.item_name : 'Item not found' %>
+          (<%= parseFloat(detail.price).toFixed(2) %>) x <%= detail.quantity %>
+          <% if (detail.remarks) { %><br><small><em>Note: <%= detail.remarks %></em></small><% } %>
+        </div>
+        <div><%= (detail.quantity * parseFloat(detail.price)).toFixed(2) %></div>
+      </div>
+    <% }) %>
+    <div class="item-row"><strong>Total</strong><strong><%= grandTotal.toFixed(2) %></strong></div>
+  </div>
+<% } %>

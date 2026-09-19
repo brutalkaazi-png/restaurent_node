@@ -1,0 +1,3 @@
+<div class="card"><h2><%= customer.name %> order history</h2><p><%= customer.phone || customer.email || '' %> · <%= customer.visit_count %> visits · $<%= parseFloat(customer.total_spend || 0).toFixed(2) %> total spend</p><a class="btn btn-secondary" href="/customers">Back to customers</a></div>
+<% if (!orders.length) { %><div class="card" role="status">No orders found for this customer.</div><% } %>
+<% orders.forEach((order) => { %><div class="card item-row"><div><strong>Order #<%= order.id %></strong><div><%= order.delivery_type || order.qr_type || 'Restaurant order' %> · <%= order.order_status %></div></div><strong>$<%= parseFloat(order.total_cost || 0).toFixed(2) %></strong></div><% }) %>

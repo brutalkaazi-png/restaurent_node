@@ -1,0 +1,50 @@
+<div class="card">
+  <h2>Register your restaurant</h2>
+  <% if (typeof errors !== 'undefined' && errors && errors.length) { %>
+    <div class="message"><% errors.forEach(function(e){ %><div><%= e %></div><% }) %></div>
+  <% } %>
+  <form method="POST" action="/register/store" enctype="multipart/form-data">
+    <label>Restaurant / Business name</label>
+    <input type="text" name="name" required>
+
+    <label>Custom URL slug (optional)</label>
+    <input type="text" name="slug">
+
+    <label>City / District</label>
+    <select name="city">
+      <% districts.forEach(function(d){ %>
+        <option value="<%= d.name %>"><%= d.name %></option>
+      <% }) %>
+    </select>
+
+    <label>Address</label>
+    <input type="text" name="address">
+
+    <input type="hidden" name="latitude" value="">
+    <input type="hidden" name="longitude" value="">
+
+    <label>Phone</label>
+    <input type="text" name="phone">
+
+    <label>Email</label>
+    <input type="email" name="email" required>
+
+    <label>Password</label>
+    <input type="password" name="password" required minlength="6">
+
+    <label>Confirm password</label>
+    <input type="password" name="password_confirmation" required minlength="6">
+
+    <label>Account type</label>
+    <select name="user_type">
+      <option value="R">Restaurant owner</option>
+      <option value="C">Customer</option>
+    </select>
+
+    <input type="hidden" name="restaurant_type" value="">
+    <input type="hidden" name="remark" value="">
+
+    <button class="btn" type="submit">Register</button>
+  </form>
+  <p><a href="/login">Already have an account? Log in</a></p>
+</div>

@@ -1,0 +1,18 @@
+<div class="card">
+  <h2>Add inventory item</h2>
+  <% if (errors && errors.length) { %>
+    <div class="message"><% errors.forEach(function(e) { %><div><%= e %></div><% }) %></div>
+  <% } %>
+  <form method="POST" action="/inventory">
+    <label>Name</label>
+    <input type="text" name="name" required>
+    <label>Unit (e.g. kg, liters, pieces)</label>
+    <input type="text" name="unit" required>
+    <label>Starting quantity</label>
+    <input type="number" step="0.01" min="0" name="quantity" value="0" required>
+    <label>Price per unit (optional, recorded on the initial stock transaction)</label>
+    <input type="number" step="0.01" min="0" name="price_per_unit">
+    <button class="btn" type="submit">Save</button>
+    <a class="btn btn-secondary" href="/inventory">Cancel</a>
+  </form>
+</div>

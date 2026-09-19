@@ -1,0 +1,42 @@
+<div class="card">
+  <h3>Table #<%= id %> orders</h3>
+  <% if (!groupedOrders.length) { %>
+    <p>No active items for this table.</p>
+  <% } %>
+  <% groupedOrders.forEach(function(g) { %>
+    <div class="item-row">
+      <div>
+        <%= g.item ? g.item.item_name : 'Item' %> x<%= g.quantity %>
+        <% if (g.variant) { %> (<%= g.variant.name %>)<% } %>
+        <% if (g.remarks) { %><br><small>Note: <%= g.remarks %></small><% } %>
+      </div>
+      <div>
+        <span class="item-status"><%= g.status %></span><br>
+        <button type="button" class="update-order-btn" data-ids="<%= g.sub_order_ids %>" data-status="order_delivered">Mark delivered</button>
+      </div>
+    </div>
+  <% }) %>
+</div>
+
+<div style="margin-top:12px;">
+  <a class="btn" href="/counter-admin/make_bill/<%= id %>" target="_blank">Prepare bill</a>
+  <button type="button" class="btn btn-secondary" id="cancel-table-btn" data-table-id="<%= id %>">Cancel table</button>
+</div>
+
+<script>
+  document.querySelectorAll('.update-order-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      fetch('/counter-admin/update-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: btn.dataset.ids, status: btn.dataset.status }),
+      }).then(() => location.reload());
+    });
+  });
+  const cancelBtn = document.getElementById('cancel-table-btn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      fetch(`/counter-admin/cancel_order/${cancelBtn.dataset.tableId}`).then(() => location.reload());
+    });
+  }
+</script>

@@ -1,0 +1,19 @@
+<div class="card">
+  <div class="item-row">
+    <h2>Platform settings</h2>
+    <a class="btn" href="/superadmin/setting/create">Edit all</a>
+  </div>
+</div>
+<% settings.forEach(function(s) { %>
+  <div class="card">
+    <div class="item-row">
+      <div><strong><%= s.option_name %></strong><br><small><%= s.option_value %></small></div>
+      <div>
+        <a class="btn" href="/superadmin/setting/<%= s.id %>/edit">Edit</a>
+        <form method="POST" action="/superadmin/setting/<%= s.id %>/delete" style="display:inline;">
+          <button type="submit" class="btn btn-secondary">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+<% }) %>

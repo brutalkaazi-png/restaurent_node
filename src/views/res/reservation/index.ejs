@@ -1,0 +1,23 @@
+<style>
+  .reservation-toolbar { display:flex; align-items:end; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .reservation-toolbar input { width:auto; margin:0; } .reservation-list { display:grid; gap:12px; }
+  .reservation-row { display:grid; grid-template-columns:1.2fr 1fr .7fr .8fr auto; gap:14px; align-items:center; }
+  .reservation-meta { color:#687386; font-size:12px; } .status { padding:5px 8px; border-radius:999px; background:#e2e8f0; font-size:12px; font-weight:700; text-transform:capitalize; }
+  .status.confirmed { background:#bbf7d0; color:#166534; } .status.cancelled,.status.no_show { background:#fecaca; color:#991b1b; }
+  @media(max-width:720px) { .reservation-row { grid-template-columns:1fr 1fr; } .reservation-row form,.reservation-row .actions { grid-column:1/-1; } }
+</style>
+<div class="card"><div class="reservation-toolbar"><div><h2>Reservations</h2><p>Manage bookings by date, table, and status.</p></div><div><form method="GET" action="/reservations"><label for="reservation-date">Date</label><input id="reservation-date" type="date" name="date" value="<%= selectedDate %>"><button class="btn btn-secondary" type="submit">Filter</button></form><a class="btn" href="/reservations/create">+ Add reservation</a></div></div></div>
+<% if (!reservations.length) { %><div class="card" role="status">No reservations found for this date.</div><% } %>
+<div class="reservation-list">
+<% reservations.forEach((reservation) => { %>
+  <div class="card reservation-row">
+    <div><strong><%= reservation.customer_name %></strong><div class="reservation-meta"><%= reservation.customer_phone || reservation.customer_email || 'No contact provided' %></div></div>
+    <div><strong><%= new Date(reservation.starts_at).toLocaleString() %></strong><div class="reservation-meta">Until <%= new Date(reservation.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %></div></div>
+    <div><%= reservation.guest_count %> guests<div class="reservation-meta"><%= reservation.table ? reservation.table.table_name : 'No table' %></div></div>
+    <span class="status <%= reservation.status %>"><%= reservation.status.replace('_', ' ') %></span>
+    <div class="actions"><a class="btn btn-secondary" href="/reservations/<%= reservation.id %>/edit">Edit</a><form method="POST" action="/reservations/<%= reservation.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this reservation?')"><button class="btn btn-secondary" type="submit">Delete</button></form></div>
+    <form method="POST" action="/reservations/<%= reservation.id %>/status" class="actions"><select name="status" aria-label="Reservation status"><% ['pending','confirmed','seated','completed','cancelled','no_show'].forEach((status) => { %><option value="<%= status %>" <%= reservation.status === status ? 'selected' : '' %>><%= status.replace('_', ' ') %></option><% }) %></select><button class="btn" type="submit">Update</button></form>
+  </div>
+<% }) %>
+</div>
+<script>document.querySelectorAll('form[action$="/status"]').forEach(form => form.addEventListener('submit', async event => { event.preventDefault(); const response = await fetch(form.action, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(new FormData(form)) }); if (response.ok) location.reload(); else alert('Reservation status could not be updated.'); }));</script>

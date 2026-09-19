@@ -1,0 +1,111 @@
+<%
+// Ported from resources/views/table-menu-cart.blade.php.
+// `cart` here is a plain object (already flattened by getTableCart in the
+// controller) keyed by composite key -> { quantity, name, remarks, status, ... }.
+const cartItems = Object.values(cart || {});
+const unconfirmedItems = cartItems.filter(i => i.status === 'add_to_cart');
+const confirmedItems = cartItems.filter(i => !['add_to_cart', 'cancelled'].includes(i.status));
+
+function statusLabel(status) {
+  if (status === 'order_delivered') return 'Delivered';
+  if (status === 'preparing') return 'Preparing';
+  if (status === 'cancelled') return 'Cancelled';
+  return 'Confirmed';
+}
+%>
+<div class="cart-item">
+<% if (which === 'my') { %>
+  <% if (cartItems.length) { %>
+
+    <% if (unconfirmedItems.length) { %>
+      <div id="unconfirmed-items-content-source">
+        <div class="top-heading">
+          <h2>Order Not Confirmed</h2>
+          <p class="subtext">Please review your order and tap below to proceed to payment.</p>
+        </div>
+        <div class="cart-main-top cart-main clearfix">
+          <input type="hidden" name="table_id" value="<%= tableId %>" />
+          <div class="cart-top cart-top-header">
+            <div class="item-quantity">Qty</div>
+            <div class="item-name">Name</div>
+            <div class="cart-remove"></div>
+          </div>
+          <% unconfirmedItems.forEach(function(item) { %>
+            <div class="cart-top">
+              <div class="item-quantity"><%= item.quantity %> x</div>
+              <div class="item-name">
+                <div><%= item.name %></div>
+                <% if (item.remarks) { %>
+                  <span class="remark-text">Remark: <%= item.remarks.trim().replace(/;$/, '') %></span>
+                <% } %>
+              </div>
+              <div class="cart-remove">
+                <button type="button" class="delete-cart-item"
+                  data-item-id="<%= item.item_id %><%= item.variant_id ? '-' + item.variant_id : '' %><%= item.topping_ids ? '-t' + item.topping_ids : '' %>">
+                  &times;
+                </button>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+        <div style="margin-top:12px;">
+          <button type="button" id="shortcut-confirm-pay-btn" class="btn" style="width:100%;">
+            <%= payFirst ? 'Confirm My Order and Pay' : 'Confirm My Order' %>
+          </button>
+        </div>
+      </div>
+    <% } %>
+
+    <div class="order-confirmed-section">
+      <% if (confirmedItems.length) { %>
+        <div class="cart-main-top cart-main clearfix">
+          <h2 class="main-title">Added to cart (Order confirmed)</h2>
+          <div class="cart-top cart-top-header">
+            <div class="item-quantity">Qty</div>
+            <div class="item-name">Name</div>
+            <div class="item-name">Status</div>
+          </div>
+          <% confirmedItems.forEach(function(item) { %>
+            <div class="cart-top">
+              <div class="item-quantity"><%= item.quantity %> x</div>
+              <div class="item-name">
+                <div><%= item.name %></div>
+                <% if (item.remarks) { %>
+                  <span class="remark-text">Remark: <%= item.remarks.trim().replace(/;$/, '') %></span>
+                <% } %>
+              </div>
+              <div class="item-name"><span class="item-status"><%= statusLabel(item.status) %></span></div>
+            </div>
+          <% }) %>
+        </div>
+      <% } else if (!unconfirmedItems.length) { %>
+        <div class="cart-top text-muted">No orders have been added.</div>
+      <% } %>
+    </div>
+
+  <% } else { %>
+    <div class="cart-top"><div class="item-name text-muted">No orders have been added.</div></div>
+  <% } %>
+
+<% } else if (which === 'all') { %>
+  <% if (tableCustomers && tableCustomers.length) { %>
+    <div class="cart-main-top cart-main table-menu-cart">
+      <h2 class="main-title">All orders added for this table</h2>
+      <div class="cart-top cart-top-header">
+        <div class="item-quantity">Qty</div>
+        <div class="item-name">Name</div>
+        <div class="item-price">Status</div>
+      </div>
+      <% tableCustomers.forEach(function(row) { %>
+        <div class="cart-top cart-top-all">
+          <div class="item-quantity"><%= row.quantity %> x</div>
+          <div class="item-name">Item #<%= row.item_id %></div>
+          <div class="item-price">
+            <%= row.status === 'add_to_cart' ? 'Order Requested' : (row.status === 'preparing' ? 'Preparing' : 'Confirmed') %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+<% } %>
+</div>

@@ -1,0 +1,15 @@
+<div class="card">
+  <h2>Log in</h2>
+  <% if (typeof message !== 'undefined' && message) { %>
+    <div class="message"><%= message %></div>
+  <% } %>
+  <form method="POST" action="/login">
+    <label>Email</label>
+    <input type="email" name="email" required>
+    <label>Password</label>
+    <input type="password" name="password" required>
+    <label><input type="checkbox" name="remember" style="width:auto;display:inline-block;"> Remember me</label>
+    <button class="btn" type="submit">Log in</button>
+  </form>
+  <p><a href="/register">Register a restaurant</a></p>
+</div>

@@ -1,0 +1,13 @@
+<% if (!result.rows.length) { %>
+  <tr><td colspan="5" class="text-center"><div class="alert">No order history found for this date.</div></td></tr>
+<% } else { %>
+  <% result.rows.forEach(function(row, i) { %>
+    <tr>
+      <td><%= (result.page - 1) * result.perPage + i + 1 %></td>
+      <td><%= row.table ? row.table.table_name : '' %></td>
+      <td><%= row.item ? row.item.item_name : 'Item #' + row.item_id %></td>
+      <td><%= row.quantity %></td>
+      <td><%= row.status %></td>
+    </tr>
+  <% }) %>
+<% } %>

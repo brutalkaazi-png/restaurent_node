@@ -1,0 +1,18 @@
+<%
+// Bulk edit form: one row per known setting key, matching the original's
+// convention of posting option_value as an associative array
+// { currency: '$', admin_email: '...' } in a single request.
+const known = ['currency', 'admin_email', 'site_name', 'support_phone'];
+const byName = {};
+settings.forEach(function(s) { byName[s.option_name] = s.option_value; });
+%>
+<div class="card">
+  <h2>Edit all settings</h2>
+  <form method="POST" action="/superadmin/setting/store">
+    <% known.forEach(function(key) { %>
+      <label><%= key %></label>
+      <input type="text" name="option_value[<%= key %>]" value="<%= byName[key] || '' %>">
+    <% }) %>
+    <button class="btn" type="submit">Save all</button>
+  </form>
+</div>

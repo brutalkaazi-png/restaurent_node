@@ -1,0 +1,31 @@
+<div class="card">
+  <h2><%= restaurant.name %></h2>
+  <p><%= restaurant.address %></p>
+</div>
+
+<div class="card"><h3>Current Offers</h3></div>
+
+<% if (!promotions.length) { %>
+  <div class="card">No active promotions right now.</div>
+<% } %>
+
+<% promotions.forEach(function(p) { %>
+  <div class="card">
+    <h4><%= p.name %></h4>
+    <p>
+      <%= (p.days || []).includes('All Day') ? 'All Days' : (p.days || []).join(', ') %><br>
+      <% if (p.start_time && p.end_time) { %>
+        <%= p.start_time.slice(0,5) %> - <%= p.end_time.slice(0,5) %>
+      <% } else { %>
+        All Time
+      <% } %>
+    </p>
+    <% (p.items || []).forEach(function(pi) { %>
+      <div class="item-row">
+        <div><%= pi.item.item_name %></div>
+        <div><s>$<%= parseFloat(pi.item.price || 0).toFixed(2) %></s> <strong>$<%= parseFloat(pi.offer_price).toFixed(2) %></strong></div>
+      </div>
+    <% }) %>
+    <a class="btn" href="/<%= restaurant.slug %>/offer/<%= p.slug %>">View details</a>
+  </div>
+<% }) %>

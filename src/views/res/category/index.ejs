@@ -1,0 +1,28 @@
+<div class="card">
+  <div class="item-row">
+    <h2>Categories</h2>
+    <a class="btn" href="/categories/create">+ Add category</a>
+  </div>
+</div>
+
+<% if (!categories.length) { %>
+  <div class="card">No categories yet.</div>
+<% } %>
+
+<% categories.forEach(function(cat) { %>
+  <div class="card">
+    <div class="item-row">
+      <div>
+        <strong><%= cat.category_name %></strong>
+        <div style="font-size:0.85em;color:#777;"><%= cat.item_count %> item(s)</div>
+        <% if (cat.category_description) { %><div style="font-size:0.9em;"><%= cat.category_description %></div><% } %>
+      </div>
+      <div>
+        <a class="btn" href="/categories/<%= cat.id %>/edit">Edit</a>
+        <form method="POST" action="/categories/<%= cat.id %>/delete" style="display:inline;" onsubmit="return confirm('Delete this category?');">
+          <button type="submit" class="btn btn-secondary">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+<% }) %>

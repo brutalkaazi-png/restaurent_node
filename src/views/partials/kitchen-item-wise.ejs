@@ -1,0 +1,18 @@
+<%
+const categories = Object.keys(groupedByCategory || {});
+%>
+<% if (!categories.length) { %>
+  <div class="alert"><%= noOrdersMessage %></div>
+<% } else { %>
+  <% categories.forEach(function(catName) { %>
+    <div class="card">
+      <h4><%= catName %></h4>
+      <% groupedByCategory[catName].forEach(function(item) { %>
+        <div class="item-row">
+          <div><%= item.item_name %></div>
+          <div>x<%= item.total_quantity %></div>
+        </div>
+      <% }) %>
+    </div>
+  <% }) %>
+<% } %>

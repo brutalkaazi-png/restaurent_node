@@ -1,0 +1,37 @@
+<div class="card">
+  <h2>Platform dashboard</h2>
+  <form method="GET" action="/superadmin/dashboard">
+    <label>Filter period</label>
+    <select name="date_period">
+      <option value="">All time</option>
+      <option value="daily" <%= datePeriod === 'daily' ? 'selected' : '' %>>Daily</option>
+      <option value="monthly" <%= datePeriod === 'monthly' ? 'selected' : '' %>>Monthly</option>
+      <option value="yearly" <%= datePeriod === 'yearly' ? 'selected' : '' %>>Yearly</option>
+    </select>
+    <label>Date (format depends on period: YYYY-MM-DD / MM-YYYY / YYYY)</label>
+    <input type="text" name="selected_date" value="<%= dateRange %>">
+    <button class="btn" type="submit">Apply</button>
+  </form>
+</div>
+
+<div class="card">
+  <div class="item-row"><strong>Restaurants registered</strong><strong><%= totalRestaurantRegistered %></strong></div>
+  <div class="item-row"><strong>Subscriptions purchased</strong><strong><%= totalRestaurantSubscribed %></strong></div>
+</div>
+
+<div class="card">
+  <h3>Subscriptions by plan</h3>
+  <% subscriptions.forEach(function(sub) { %>
+    <%
+      const row = subscriptionCount.find(function(c) { return c.subscription_id === sub.id; });
+      const userCount = row ? row.get('user_count') : 0;
+    %>
+    <div class="item-row"><div><%= sub.name %></div><div><%= userCount %></div></div>
+  <% }) %>
+</div>
+
+<div class="card">
+  <a class="btn" href="/superadmin/restaurants">Manage restaurants</a><br><br>
+  <a class="btn" href="/superadmin/subscriptions">Manage subscription plans</a><br><br>
+  <a class="btn" href="/superadmin/setting">Platform settings</a>
+</div>

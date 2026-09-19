@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-labelledby="title desc">
+  <title id="title">Tablely demo restaurant mark</title>
+  <desc id="desc">A warm orange restaurant emblem with a table and steam lines.</desc>
+  <rect width="800" height="500" fill="#172033"/>
+  <circle cx="400" cy="220" r="128" fill="#f97316"/>
+  <path d="M318 252h164M342 252v55M458 252v55M302 307h196" fill="none" stroke="#fff7ed" stroke-width="18" stroke-linecap="round"/>
+  <path d="M355 160c-22-27 22-42 0-70M400 160c-22-27 22-42 0-70M445 160c-22-27 22-42 0-70" fill="none" stroke="#fff7ed" stroke-width="14" stroke-linecap="round"/>
+  <text x="400" y="420" text-anchor="middle" fill="#fff7ed" font-family="Georgia,serif" font-size="48" letter-spacing="4">TABLELY</text>
+</svg>

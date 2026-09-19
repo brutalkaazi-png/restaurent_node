@@ -1,0 +1,28 @@
+<div class="card">
+  <h2>Edit restaurant</h2>
+  <% if (error) { %><div class="message"><%= error %></div><% } %>
+  <form method="POST" action="/superadmin/restaurant/update/<%= restaurant.id %>" enctype="multipart/form-data">
+    <label>Name</label>
+    <input type="text" name="name" value="<%= restaurant.name %>" required>
+
+    <label>Slug</label>
+    <input type="text" name="slug" value="<%= restaurant.slug %>">
+
+    <label>Email</label>
+    <input type="email" name="email" value="<%= restaurant.email %>" required>
+
+    <label>Address</label>
+    <input type="text" name="address" value="<%= restaurant.address || '' %>">
+
+    <label>Phone</label>
+    <input type="text" name="phone" value="<%= restaurant.phone || '' %>">
+
+    <label>Image</label>
+    <input type="file" name="image" accept="image/*">
+    <label>Logo</label>
+    <input type="file" name="logo" accept="image/*">
+
+    <button class="btn" type="submit">Save</button>
+    <a class="btn btn-secondary" href="/superadmin/restaurants">Cancel</a>
+  </form>
+</div>

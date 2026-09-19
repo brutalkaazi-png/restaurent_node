@@ -1,0 +1,36 @@
+<div class="card">
+  <h2><%= restaurant.name %></h2>
+  <p><%= restaurant.address %></p>
+</div>
+
+<div class="card" style="text-align:center;">
+  <h2><%= promotion.name %></h2>
+  <p><strong>Available:</strong> <%= promotion.start_date %> &ndash; <%= promotion.end_date %></p>
+  <p><strong>Days:</strong> <%= (promotion.days || []).join(', ') %></p>
+  <p><strong>Time:</strong>
+    <% if (promotion.start_time && promotion.end_time) { %>
+      <%= promotion.start_time.slice(0,5) %> - <%= promotion.end_time.slice(0,5) %>
+    <% } else { %>
+      All Time
+    <% } %>
+  </p>
+</div>
+
+<% if (promotion.items && promotion.items.length) { %>
+  <% promotion.items.forEach(function(pi) { %>
+    <div class="card">
+      <div class="item-row">
+        <div>
+          <strong><%= pi.item.item_name %></strong><br>
+          <small><%= (pi.item.item_description || '').slice(0, 150) %></small>
+        </div>
+        <div>
+          <s>$<%= parseFloat(pi.item.price || 0).toFixed(2) %></s>
+          <strong style="color:#28a745;"> $<%= parseFloat(pi.offer_price).toFixed(2) %></strong>
+        </div>
+      </div>
+    </div>
+  <% }) %>
+<% } else { %>
+  <div class="card">No offer items available for this promotion.</div>
+<% } %>
