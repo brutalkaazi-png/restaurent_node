@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const QRCode = require('qrcode');
+const QRCode = require('../utils/qrHelper');
 const { RestaurantTable, User } = require('../models');
 const { sanitizeString } = require('../utils/stringHelper');
 
