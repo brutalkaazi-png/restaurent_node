@@ -1,1 +1,50 @@
-<div class="card"><h2>Edit customer</h2><form method="POST" action="/customers/<%= customer.id %>"><label>Name</label><input name="name" required value="<%= customer.name %>"><label>Phone</label><input name="phone" value="<%= customer.phone || '' %>"><label>Email</label><input type="email" name="email" value="<%= customer.email || '' %>"><label>Address</label><input name="address" value="<%= customer.address || '' %>"><label>Notes</label><textarea name="notes"><%= customer.notes || '' %></textarea><button class="btn" type="submit">Save</button><a class="btn btn-secondary" href="/customers">Cancel</a></form></div>
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Diner Profile</span>
+      <span style="font-size:12px;color:var(--muted);">Customer #<%= customer.id %></span>
+    </div>
+    <h2>Edit Guest Profile: <%= customer.name %></h2>
+    <p>Update customer contact information, delivery address, VIP tier preferences, and dietary restrictions.</p>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a class="btn btn-secondary" href="/customers">← Back to Customers</a>
+  </div>
+</div>
+
+<div class="card" style="max-width:700px;margin:0 auto;box-shadow:var(--shadow-sm);border:1px solid var(--line);">
+  <form method="POST" action="/customers/<%= customer.id %>" style="display:grid;gap:16px;">
+    <div>
+      <label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:var(--ink);">Guest Full Name *</label>
+      <input name="name" required value="<%= customer.name %>" placeholder="e.g. John Doe" style="padding:10px 14px;border-radius:8px;">
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div>
+        <label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:var(--ink);">Phone Number</label>
+        <input name="phone" value="<%= customer.phone || '' %>" placeholder="e.g. +1 555-0199" style="padding:10px 14px;border-radius:8px;">
+      </div>
+      <div>
+        <label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:var(--ink);">Email Address</label>
+        <input type="email" name="email" value="<%= customer.email || '' %>" placeholder="e.g. guest@example.com" style="padding:10px 14px;border-radius:8px;">
+      </div>
+    </div>
+
+    <div>
+      <label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:var(--ink);">Delivery / Physical Address</label>
+      <input name="address" value="<%= customer.address || '' %>" placeholder="e.g. 123 Main Street, Apt 4B" style="padding:10px 14px;border-radius:8px;">
+    </div>
+
+    <div>
+      <label style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:var(--ink);">Guest Notes, Dietary & Seating Preferences</label>
+      <textarea name="notes" rows="4" placeholder="e.g. Nut allergy, prefers quiet corner booth, wine club member..." style="padding:10px 14px;border-radius:8px;"><%= customer.notes || '' %></textarea>
+      <span style="font-size:12px;color:var(--muted);display:block;margin-top:4px;">These notes appear during seating reservations and order prep.</span>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <a class="btn btn-secondary" href="/customers">Cancel</a>
+      <button class="btn" type="submit" style="padding:10px 24px;">Save Guest Profile</button>
+    </div>
+  </form>
+</div>
+

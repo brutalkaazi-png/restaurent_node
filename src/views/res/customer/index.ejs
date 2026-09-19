@@ -1,3 +1,128 @@
-<div class="card"><div class="item-row"><div><h2>Customers</h2><p>Restaurant-scoped customer profiles and visit history.</p></div><form method="GET" action="/customers"><input aria-label="Search customers" name="search" placeholder="Search name, email, phone" value="<%= search %>"><button class="btn btn-secondary" type="submit">Search</button></form></div></div>
-<% if (!customers.length) { %><div class="card" role="status">No customers found.</div><% } %>
-<% customers.forEach((customer) => { %><div class="card"><div class="item-row"><div><strong><%= customer.name %></strong><div><%= customer.phone || customer.email || 'No contact details' %></div><small><%= customer.notes || 'No notes' %></small></div><div><strong><%= customer.visit_count %> visits</strong><br><span>$<%= parseFloat(customer.total_spend || 0).toFixed(2) %> spent</span><br><a class="btn btn-secondary" href="/customers/<%= customer.id %>/history">History</a> <a class="btn" href="/customers/<%= customer.id %>/edit">Edit</a></div></div></div><% }) %>
+<%
+const totalCustomers = customers.length;
+const repeatGuests = customers.filter(c => (c.visit_count || 0) >= 3).length;
+let totalLtv = 0;
+customers.forEach(c => { totalLtv += parseFloat(c.total_spend || 0); });
+%>
+
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Guest CRM & Loyalty</span>
+      <span style="font-size:12px;color:var(--muted);">Diner Profiles & Spend History</span>
+    </div>
+    <h2>Customer Directory & Loyalty</h2>
+    <p>View dining guest profiles, track visit frequencies, lifetime spending, and manage dietary notes and VIP status.</p>
+  </div>
+</div>
+
+<!-- 3 CRM KPI CARDS -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:20px;">
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Total Guest Profiles</span>
+    <div style="font-size:28px;font-weight:800;color:var(--ink);margin:6px 0 2px;"><%= totalCustomers %></div>
+    <span style="font-size:12px;color:var(--muted);">Registered diners & online guests</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">VIP & Repeat Diners</span>
+    <div style="font-size:28px;font-weight:800;color:#0d9488;margin:6px 0 2px;"><%= repeatGuests %></div>
+    <span style="font-size:12px;color:var(--muted);">3 or more restaurant visits</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Aggregate Lifetime Value</span>
+    <div style="font-size:28px;font-weight:800;color:var(--brand);margin:6px 0 2px;">$<%= totalLtv.toFixed(2) %></div>
+    <span style="font-size:12px;color:var(--muted);">Total revenue generated from guest base</span>
+  </div>
+</div>
+
+<!-- SEARCH BAR -->
+<div class="card" style="margin-bottom:20px;padding:14px 20px;">
+  <form method="GET" action="/customers" style="display:flex;gap:12px;align-items:center;margin:0;flex-wrap:wrap;">
+    <div style="position:relative;flex:1;min-width:240px;">
+      <input aria-label="Search customers" name="search" placeholder="Search by customer name, phone number, or email address..." value="<%= search || '' %>" style="margin:0;padding:10px 14px 10px 38px;border-radius:8px;">
+      <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;">🔍</span>
+    </div>
+    <button class="btn" type="submit" style="padding:9px 18px;margin:0;">Search</button>
+    <% if (search) { %>
+      <a class="btn btn-secondary" href="/customers" style="padding:9px 14px;margin:0;">Clear</a>
+    <% } %>
+  </form>
+</div>
+
+<!-- CUSTOMER LIST -->
+<% if (!customers.length) { %>
+  <div class="card" role="status" style="text-align:center;padding:56px 20px;">
+    <div style="font-size:36px;margin-bottom:12px;">👥</div>
+    <h3 style="margin:0 0 6px;">No guests found</h3>
+    <p style="color:var(--muted);margin:0;">No customer profiles match your search criteria. Guests are automatically logged when they order or make reservations.</p>
+  </div>
+<% } else { %>
+  <div style="display:grid;gap:12px;">
+    <% customers.forEach((customer) => { 
+      const visits = customer.visit_count || 0;
+      const spend = parseFloat(customer.total_spend || 0);
+      const isGold = visits >= 5 || spend >= 200;
+      const isSilver = visits >= 3 || spend >= 100;
+      const initials = (customer.name || 'G').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    %>
+      <div class="card" style="margin:0;box-shadow:var(--shadow-sm);border:1px solid var(--line);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+          <!-- GUEST AVATAR & INFO -->
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:48px;height:48px;border-radius:50%;background:<%= isGold ? '#fef3c7' : (isSilver ? '#e0e7ff' : '#f1f5f9') %>;color:<%= isGold ? '#b45309' : (isSilver ? '#3730a3' : '#475569') %>;display:grid;place-items:center;font-size:17px;font-weight:800;">
+              <%= initials %>
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <strong style="font-size:16.5px;color:var(--ink);"><%= customer.name %></strong>
+                <% if (isGold) { %>
+                  <span class="badge" style="background:#fef3c7;color:#b45309;font-weight:800;font-size:11px;">★ Gold VIP</span>
+                <% } else if (isSilver) { %>
+                  <span class="badge" style="background:#e0e7ff;color:#3730a3;font-weight:700;font-size:11px;">Silver Regular</span>
+                <% } else { %>
+                  <span class="badge" style="background:#f1f5f9;color:#64748b;font-size:11px;">Guest</span>
+                <% } %>
+              </div>
+              <div style="font-size:13px;color:var(--muted);margin-top:2px;display:flex;gap:12px;flex-wrap:wrap;">
+                <% if (customer.phone) { %>
+                  <span>📞 <%= customer.phone %></span>
+                <% } %>
+                <% if (customer.email) { %>
+                  <span>✉️ <%= customer.email %></span>
+                <% } %>
+                <% if (!customer.phone && !customer.email) { %>
+                  <span style="color:var(--subtle);">No contact details</span>
+                <% } %>
+              </div>
+              <% if (customer.notes) { %>
+                <div style="font-size:12px;color:#d97706;margin-top:4px;background:#fffbeb;padding:2px 8px;border-radius:4px;display:inline-block;border:1px solid #fde68a;">
+                  📝 Notes: <%= customer.notes %>
+                </div>
+              <% } %>
+            </div>
+          </div>
+
+          <!-- VISITS, SPEND & ACTIONS -->
+          <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+            <div style="text-align:right;">
+              <div style="font-size:18px;font-weight:800;color:var(--brand);">$<%= spend.toFixed(2) %></div>
+              <div style="font-size:12.5px;color:var(--muted);"><%= visits %> total visit<%= visits === 1 ? '' : 's' %></div>
+            </div>
+
+            <div style="display:flex;gap:8px;">
+              <a class="btn btn-secondary" href="/customers/<%= customer.id %>/history" style="padding:7px 12px;font-size:12.5px;">
+                📜 Order History
+              </a>
+              <a class="btn btn-secondary" href="/customers/<%= customer.id %>/edit" style="padding:7px 12px;font-size:12.5px;">
+                ✏️ Edit
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+<% } %>
+

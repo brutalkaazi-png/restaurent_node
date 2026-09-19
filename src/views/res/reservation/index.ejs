@@ -1,23 +1,195 @@
-<style>
-  .reservation-toolbar { display:flex; align-items:end; justify-content:space-between; gap:16px; flex-wrap:wrap; }
-  .reservation-toolbar input { width:auto; margin:0; } .reservation-list { display:grid; gap:12px; }
-  .reservation-row { display:grid; grid-template-columns:1.2fr 1fr .7fr .8fr auto; gap:14px; align-items:center; }
-  .reservation-meta { color:#687386; font-size:12px; } .status { padding:5px 8px; border-radius:999px; background:#e2e8f0; font-size:12px; font-weight:700; text-transform:capitalize; }
-  .status.confirmed { background:#bbf7d0; color:#166534; } .status.cancelled,.status.no_show { background:#fecaca; color:#991b1b; }
-  @media(max-width:720px) { .reservation-row { grid-template-columns:1fr 1fr; } .reservation-row form,.reservation-row .actions { grid-column:1/-1; } }
-</style>
-<div class="card"><div class="reservation-toolbar"><div><h2>Reservations</h2><p>Manage bookings by date, table, and status.</p></div><div><form method="GET" action="/reservations"><label for="reservation-date">Date</label><input id="reservation-date" type="date" name="date" value="<%= selectedDate %>"><button class="btn btn-secondary" type="submit">Filter</button></form><a class="btn" href="/reservations/create">+ Add reservation</a></div></div></div>
-<% if (!reservations.length) { %><div class="card" role="status">No reservations found for this date.</div><% } %>
-<div class="reservation-list">
-<% reservations.forEach((reservation) => { %>
-  <div class="card reservation-row">
-    <div><strong><%= reservation.customer_name %></strong><div class="reservation-meta"><%= reservation.customer_phone || reservation.customer_email || 'No contact provided' %></div></div>
-    <div><strong><%= new Date(reservation.starts_at).toLocaleString() %></strong><div class="reservation-meta">Until <%= new Date(reservation.ends_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %></div></div>
-    <div><%= reservation.guest_count %> guests<div class="reservation-meta"><%= reservation.table ? reservation.table.table_name : 'No table' %></div></div>
-    <span class="status <%= reservation.status %>"><%= reservation.status.replace('_', ' ') %></span>
-    <div class="actions"><a class="btn btn-secondary" href="/reservations/<%= reservation.id %>/edit">Edit</a><form method="POST" action="/reservations/<%= reservation.id %>/delete" style="display:inline" onsubmit="return confirm('Delete this reservation?')"><button class="btn btn-secondary" type="submit">Delete</button></form></div>
-    <form method="POST" action="/reservations/<%= reservation.id %>/status" class="actions"><select name="status" aria-label="Reservation status"><% ['pending','confirmed','seated','completed','cancelled','no_show'].forEach((status) => { %><option value="<%= status %>" <%= reservation.status === status ? 'selected' : '' %>><%= status.replace('_', ' ') %></option><% }) %></select><button class="btn" type="submit">Update</button></form>
+<%
+const totalBookings = reservations.length;
+const confirmedCount = reservations.filter(r => r.status === 'confirmed' || r.status === 'seated').length;
+let totalGuests = 0;
+reservations.forEach(r => { totalGuests += (parseInt(r.guest_count, 10) || 0); });
+%>
+
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Table Bookings</span>
+      <span style="font-size:12px;color:var(--muted);"><%= selectedDate %></span>
+    </div>
+    <h2>Table Reservations & Seating</h2>
+    <p>Manage dining reservations, party guest counts, table assignments, and track guest arrival statuses in real time.</p>
   </div>
-<% }) %>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a class="btn" href="/reservations/create" style="box-shadow:var(--shadow-brand);display:flex;align-items:center;gap:6px;">
+      <span>+</span> New Reservation
+    </a>
+  </div>
 </div>
-<script>document.querySelectorAll('form[action$="/status"]').forEach(form => form.addEventListener('submit', async event => { event.preventDefault(); const response = await fetch(form.action, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(new FormData(form)) }); if (response.ok) location.reload(); else alert('Reservation status could not be updated.'); }));</script>
+
+<!-- 3 KPI TILES -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:20px;">
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Reservations Booked</span>
+    <div style="font-size:28px;font-weight:800;color:var(--ink);margin:6px 0 2px;"><%= totalBookings %></div>
+    <span style="font-size:12px;color:var(--muted);">Total parties for <%= selectedDate %></span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Confirmed / Seated</span>
+    <div style="font-size:28px;font-weight:800;color:#16a34a;margin:6px 0 2px;"><%= confirmedCount %></div>
+    <span style="font-size:12px;color:var(--muted);">Ready or active on dining floor</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Expected Covers (Guests)</span>
+    <div style="font-size:28px;font-weight:800;color:#4f46e5;margin:6px 0 2px;"><%= totalGuests %></div>
+    <span style="font-size:12px;color:var(--muted);">Total dining seats reserved</span>
+  </div>
+</div>
+
+<!-- FILTER TOOLBAR -->
+<div class="card" style="margin-bottom:20px;padding:14px 20px;">
+  <form method="GET" action="/reservations" style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:0;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <label for="reservation-date" style="font-size:13px;font-weight:700;color:var(--ink);margin:0;">Booking Date:</label>
+      <input id="reservation-date" type="date" name="date" value="<%= selectedDate %>" style="margin:0;padding:8px 12px;border-radius:8px;">
+      <button class="btn btn-secondary" type="submit" style="padding:8px 14px;margin:0;">Change Date</button>
+    </div>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-secondary res-filter-btn" data-filter="all" style="padding:6px 12px;font-size:12px;background:var(--brand);color:#fff;border-color:var(--brand);">All (<%= totalBookings %>)</button>
+      <button type="button" class="btn btn-secondary res-filter-btn" data-filter="confirmed" style="padding:6px 12px;font-size:12px;">Confirmed</button>
+      <button type="button" class="btn btn-secondary res-filter-btn" data-filter="seated" style="padding:6px 12px;font-size:12px;">Seated</button>
+      <button type="button" class="btn btn-secondary res-filter-btn" data-filter="pending" style="padding:6px 12px;font-size:12px;">Pending</button>
+    </div>
+  </form>
+</div>
+
+<!-- RESERVATION LIST -->
+<% if (!reservations.length) { %>
+  <div class="card" role="status" style="text-align:center;padding:56px 20px;">
+    <div style="font-size:36px;margin-bottom:12px;">📅</div>
+    <h3 style="margin:0 0 6px;">No reservations scheduled for <%= selectedDate %></h3>
+    <p style="color:var(--muted);margin:0 0 16px;">There are no table bookings on file for this date.</p>
+    <a class="btn" href="/reservations/create">+ Create New Reservation</a>
+  </div>
+<% } else { %>
+  <div style="display:grid;gap:12px;" id="reservation-container">
+    <% reservations.forEach((reservation) => { 
+      const starts = new Date(reservation.starts_at);
+      const ends = new Date(reservation.ends_at);
+      const status = reservation.status || 'pending';
+      const isConfirmed = status === 'confirmed';
+      const isSeated = status === 'seated';
+      const isCancelled = status === 'cancelled' || status === 'no_show';
+      const initials = (reservation.customer_name || 'G').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    %>
+      <div class="card res-card" data-status="<%= status %>" style="margin:0;box-shadow:var(--shadow-sm);border:1px solid var(--line);">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">
+          <!-- GUEST & TABLE INFO -->
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:46px;height:46px;border-radius:10px;background:<%= isSeated ? '#dbeafe' : (isConfirmed ? '#dcfce7' : (isCancelled ? '#fee2e2' : '#fef3c7')) %>;color:<%= isSeated ? '#1d4ed8' : (isConfirmed ? '#15803d' : (isCancelled ? '#b91c1c' : '#b45309')) %>;display:grid;place-items:center;font-size:16px;font-weight:800;">
+              <%= initials %>
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <strong style="font-size:16px;color:var(--ink);"><%= reservation.customer_name %></strong>
+                <span class="badge" style="background:#f1f5f9;color:#475569;font-weight:700;font-size:11px;">
+                  👥 <%= reservation.guest_count %> Guests
+                </span>
+                <% if (reservation.table) { %>
+                  <span class="badge" style="background:#e0e7ff;color:#3730a3;font-weight:700;font-size:11px;">
+                    ▦ <%= reservation.table.table_name %>
+                  </span>
+                <% } else { %>
+                  <span class="badge" style="background:#fee2e2;color:#991b1b;font-size:11px;">Unassigned Table</span>
+                <% } %>
+              </div>
+              <div style="font-size:12.5px;color:var(--muted);margin-top:2px;">
+                <% if (reservation.customer_phone) { %><span>📞 <%= reservation.customer_phone %></span><% } %>
+                <% if (reservation.customer_email) { %><span> &middot; ✉️ <%= reservation.customer_email %></span><% } %>
+              </div>
+              <% if (reservation.notes) { %>
+                <div style="font-size:12px;color:#d97706;margin-top:3px;background:#fffbeb;padding:2px 8px;border-radius:4px;display:inline-block;border:1px solid #fde68a;">
+                  📝 Special Request: <%= reservation.notes %>
+                </div>
+              <% } %>
+            </div>
+          </div>
+
+          <!-- TIME, STATUS & ACTIONS -->
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+            <div style="text-align:right;">
+              <div style="font-size:15px;font-weight:700;color:var(--ink);">
+                ⏰ <%= starts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+              </div>
+              <div style="font-size:11.5px;color:var(--muted);">
+                Until <%= ends.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+              </div>
+            </div>
+
+            <!-- STATUS SELECTOR FORM -->
+            <form method="POST" action="/reservations/<%= reservation.id %>/status" style="margin:0;display:flex;gap:4px;">
+              <select name="status" aria-label="Reservation status" style="margin:0;padding:6px 10px;font-size:12.5px;font-weight:700;border-radius:6px;background:<%= isConfirmed ? '#dcfce7' : (isSeated ? '#dbeafe' : (isCancelled ? '#fee2e2' : '#fef3c7')) %>;color:<%= isConfirmed ? '#166534' : (isSeated ? '#1e40af' : (isCancelled ? '#991b1b' : '#92400e')) %>;">
+                <% ['pending','confirmed','seated','completed','cancelled','no_show'].forEach((st) => { %>
+                  <option value="<%= st %>" <%= reservation.status === st ? 'selected' : '' %>><%= st.replace('_', ' ').toUpperCase() %></option>
+                <% }) %>
+              </select>
+              <button class="btn btn-secondary" type="submit" style="padding:6px 10px;font-size:12px;margin:0;">Update</button>
+            </form>
+
+            <div style="display:flex;gap:6px;">
+              <a class="btn btn-secondary" href="/reservations/<%= reservation.id %>/edit" style="padding:6px 10px;font-size:12px;">Edit</a>
+              <form method="POST" action="/reservations/<%= reservation.id %>/delete" style="display:inline;margin:0;" onsubmit="return confirm('Delete this reservation?');">
+                <button class="btn btn-secondary" type="submit" style="padding:6px 10px;font-size:12px;color:#be123c;border-color:#fecdd3;background:#fff1f2;">Delete</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+<% } %>
+
+<script>
+  // Instant AJAX update on status form submit
+  document.querySelectorAll('form[action$="/status"]').forEach(form => {
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      const submitBtn = form.querySelector('button');
+      if (submitBtn) submitBtn.disabled = true;
+      const response = await fetch(form.action, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(new FormData(form))
+      });
+      if (response.ok) {
+        location.reload();
+      } else {
+        alert('Reservation status could not be updated.');
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+  });
+
+  // Filter chips
+  const filterBtns = document.querySelectorAll('.res-filter-btn');
+  const cards = document.querySelectorAll('.res-card');
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => {
+        b.style.background = '#fff';
+        b.style.color = 'var(--ink-secondary)';
+        b.style.borderColor = 'var(--line)';
+      });
+      btn.style.background = 'var(--brand)';
+      btn.style.color = '#fff';
+      btn.style.borderColor = 'var(--brand)';
+
+      const f = btn.dataset.filter;
+      cards.forEach(card => {
+        if (f === 'all' || card.dataset.status === f) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
+  });
+</script>
+

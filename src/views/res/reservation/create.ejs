@@ -1,14 +1,104 @@
-<div class="card"><h2><%= reservation ? 'Edit' : 'Add' %> reservation</h2>
-<% if (errors.length) { %><div class="message"><% errors.forEach((error) => { %><div><%= error %></div><% }) %></div><% } %>
-<form method="POST" action="/reservations">
-<% if (reservation && reservation.id) { %><input type="hidden" name="id" value="<%= reservation.id %>"><% } %>
-<label for="customer-name">Customer name</label><input id="customer-name" name="customer_name" required value="<%= reservation ? reservation.customer_name || '' : '' %>">
-<label for="customer-phone">Phone</label><input id="customer-phone" name="customer_phone" value="<%= reservation ? reservation.customer_phone || '' : '' %>">
-<label for="customer-email">Email</label><input id="customer-email" type="email" name="customer_email" value="<%= reservation ? reservation.customer_email || '' : '' %>">
-<label for="guest-count">Guests</label><input id="guest-count" type="number" min="1" name="guest_count" required value="<%= reservation ? reservation.guest_count || 1 : 1 %>">
-<label for="table-id">Table</label><select id="table-id" name="table_id"><option value="">Assign later</option><% tables.forEach((table) => { %><option value="<%= table.id %>" <%= reservation && String(reservation.table_id) === String(table.id) ? 'selected' : '' %>><%= table.table_name %></option><% }) %></select>
-<label for="starts-at">Starts</label><input id="starts-at" type="datetime-local" name="starts_at" required value="<%= reservation && reservation.starts_at ? new Date(reservation.starts_at).toISOString().slice(0,16) : '' %>">
-<label for="ends-at">Ends</label><input id="ends-at" type="datetime-local" name="ends_at" required value="<%= reservation && reservation.ends_at ? new Date(reservation.ends_at).toISOString().slice(0,16) : '' %>">
-<label for="notes">Special requests</label><textarea id="notes" name="notes"><%= reservation ? reservation.notes || '' : '' %></textarea>
-<button class="btn" type="submit">Save reservation</button><a class="btn btn-secondary" href="/reservations">Cancel</a>
-</form></div>
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Table Bookings</span>
+      <span style="font-size:12px;color:var(--muted);"><%= reservation ? 'Edit Booking' : 'New Booking' %></span>
+    </div>
+    <h2><%= reservation ? 'Edit Reservation' : 'Create Table Reservation' %></h2>
+    <p>Schedule a table booking, record guest contact details, party size, table allocation, and special requests.</p>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a class="btn btn-secondary" href="/reservations">← Back to Reservations</a>
+  </div>
+</div>
+
+<div class="card" style="max-width:720px;margin:0 auto;box-shadow:var(--shadow-sm);border:1px solid var(--line);">
+  <% if (errors.length) { %>
+    <div class="message" style="background:#fee2e2;color:#991b1b;border:1px solid #fecaca;padding:12px 16px;border-radius:8px;margin-bottom:16px;">
+      <% errors.forEach((error) => { %><div>⚠️ <%= error %></div><% }) %>
+    </div>
+  <% } %>
+
+  <form method="POST" action="/reservations" style="display:grid;gap:18px;">
+    <% if (reservation && reservation.id) { %>
+      <input type="hidden" name="id" value="<%= reservation.id %>">
+    <% } %>
+
+    <!-- GUEST CONTACT -->
+    <div>
+      <h3 style="margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">1. Guest Contact Details</h3>
+      <div style="display:grid;gap:12px;">
+        <div>
+          <label for="customer-name" style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:var(--ink);">Customer / Party Name *</label>
+          <input id="customer-name" name="customer_name" required value="<%= reservation ? reservation.customer_name || '' : '' %>" placeholder="e.g. Eleanor Vance" style="padding:10px 14px;border-radius:8px;">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label for="customer-phone" style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:var(--ink);">Phone Number</label>
+            <input id="customer-phone" name="customer_phone" value="<%= reservation ? reservation.customer_phone || '' : '' %>" placeholder="e.g. +1 555-0143" style="padding:10px 14px;border-radius:8px;">
+          </div>
+          <div>
+            <label for="customer-email" style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:var(--ink);">Email Address</label>
+            <input id="customer-email" type="email" name="customer_email" value="<%= reservation ? reservation.customer_email || '' : '' %>" placeholder="e.g. eleanor@example.com" style="padding:10px 14px;border-radius:8px;">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--line);margin:4px 0;">
+
+    <!-- PARTY & TABLE -->
+    <div>
+      <h3 style="margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">2. Party Size & Table Allocation</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div>
+          <label for="guest-count" style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:var(--ink);">Number of Guests (Covers) *</label>
+          <input id="guest-count" type="number" min="1" max="50" name="guest_count" required value="<%= reservation ? reservation.guest_count || 2 : 2 %>" style="padding:10px 14px;border-radius:8px;">
+        </div>
+        <div>
+          <label for="table-id" style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:var(--ink);">Assign Floor Table</label>
+          <select id="table-id" name="table_id" style="padding:10px 14px;border-radius:8px;">
+            <option value="">Assign later / Walk-in buffer</option>
+            <% tables.forEach((table) => { %>
+              <option value="<%= table.id %>" <%= reservation && String(reservation.table_id) === String(table.id) ? 'selected' : '' %>>
+                Table <%= table.table_name %> (<%= table.zone || 'Dining Floor' %>)
+              </option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--line);margin:4px 0;">
+
+    <!-- SCHEDULE -->
+    <div>
+      <h3 style="margin:0 0 12px;font-size:14px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);">3. Reservation Schedule</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div>
+          <label for="starts-at" style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:var(--ink);">Starts At *</label>
+          <input id="starts-at" type="datetime-local" name="starts_at" required value="<%= reservation && reservation.starts_at ? new Date(reservation.starts_at).toISOString().slice(0,16) : '' %>" style="padding:10px 14px;border-radius:8px;">
+        </div>
+        <div>
+          <label for="ends-at" style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:var(--ink);">Ends At (Est. Table Turnover) *</label>
+          <input id="ends-at" type="datetime-local" name="ends_at" required value="<%= reservation && reservation.ends_at ? new Date(reservation.ends_at).toISOString().slice(0,16) : '' %>" style="padding:10px 14px;border-radius:8px;">
+        </div>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid var(--line);margin:4px 0;">
+
+    <!-- SPECIAL REQUESTS -->
+    <div>
+      <label for="notes" style="display:block;font-size:13px;font-weight:700;margin-bottom:4px;color:var(--ink);">Special Requests / Dietary / Seating Preferences</label>
+      <textarea id="notes" name="notes" rows="3" placeholder="e.g. Anniversary dinner, window table preferred, high-chair needed..." style="padding:10px 14px;border-radius:8px;"><%= reservation ? reservation.notes || '' : '' %></textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <a class="btn btn-secondary" href="/reservations">Cancel</a>
+      <button class="btn" type="submit" style="padding:10px 24px;"><%= reservation ? 'Save Changes' : 'Confirm Reservation' %></button>
+    </div>
+  </form>
+</div>
+

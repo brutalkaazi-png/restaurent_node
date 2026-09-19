@@ -1,3 +1,86 @@
-<div class="card"><h2><%= customer.name %> order history</h2><p><%= customer.phone || customer.email || '' %> · <%= customer.visit_count %> visits · $<%= parseFloat(customer.total_spend || 0).toFixed(2) %> total spend</p><a class="btn btn-secondary" href="/customers">Back to customers</a></div>
-<% if (!orders.length) { %><div class="card" role="status">No orders found for this customer.</div><% } %>
-<% orders.forEach((order) => { %><div class="card item-row"><div><strong>Order #<%= order.id %></strong><div><%= order.delivery_type || order.qr_type || 'Restaurant order' %> · <%= order.order_status %></div></div><strong>$<%= parseFloat(order.total_cost || 0).toFixed(2) %></strong></div><% }) %>
+<%
+const visits = customer.visit_count || 0;
+const spend = parseFloat(customer.total_spend || 0);
+const avgCheck = visits > 0 ? (spend / visits) : 0;
+%>
+
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Diner Profile</span>
+      <span style="font-size:12px;color:var(--muted);">Customer #<%= customer.id %></span>
+    </div>
+    <h2><%= customer.name %> &mdash; Order History</h2>
+    <p>
+      <%= customer.phone ? '📞 ' + customer.phone : '' %>
+      <%= customer.email ? ' &middot; ✉️ ' + customer.email : '' %>
+      <% if (customer.address) { %> &middot; 📍 <%= customer.address %><% } %>
+    </p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a class="btn btn-secondary" href="/customers/<%= customer.id %>/edit">✏️ Edit Profile</a>
+    <a class="btn btn-secondary" href="/customers">← Back to Customers</a>
+  </div>
+</div>
+
+<!-- 3 METRIC TILES -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px;">
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Lifetime Spend</span>
+    <div style="font-size:26px;font-weight:800;color:var(--brand);margin:6px 0 2px;">$<%= spend.toFixed(2) %></div>
+    <span style="font-size:12px;color:var(--muted);">Total settled orders</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Recorded Visits</span>
+    <div style="font-size:26px;font-weight:800;color:var(--ink);margin:6px 0 2px;"><%= visits %></div>
+    <span style="font-size:12px;color:var(--muted);">Dine-in and takeout sessions</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Average Spend / Visit</span>
+    <div style="font-size:26px;font-weight:800;color:#0d9488;margin:6px 0 2px;">$<%= avgCheck.toFixed(2) %></div>
+    <span style="font-size:12px;color:var(--muted);">Average ticket size</span>
+  </div>
+</div>
+
+<div class="card" style="box-shadow:var(--shadow-sm);border:1px solid var(--line);">
+  <h3 style="margin:0 0 16px;font-size:16px;color:var(--ink);">All Orders by <%= customer.name %></h3>
+
+  <% if (!orders.length) { %>
+    <p style="text-align:center;color:var(--muted);padding:36px 0;margin:0;">No orders found for this customer profile.</p>
+  <% } else { %>
+    <div style="display:grid;gap:10px;">
+      <% orders.forEach((order) => { 
+        const isDone = order.order_status === 'completed' || order.order_status === 'delivered';
+      %>
+        <div class="item-row" style="background:#f8fafc;padding:14px 18px;border-radius:10px;border:1px solid var(--line);">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:40px;height:40px;border-radius:8px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-size:18px;font-weight:800;">
+              #
+            </div>
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <strong style="font-size:16px;color:var(--ink);">Order #<%= order.id %></strong>
+                <span class="badge" style="background:#e0e7ff;color:#3730a3;font-size:11px;font-weight:700;">
+                  <%= order.delivery_type || order.qr_type || 'Dine-In' %>
+                </span>
+                <span class="badge" style="background:<%= isDone ? '#dcfce7' : '#fef3c7' %>;color:<%= isDone ? '#15803d' : '#b45309' %>;font-size:11px;font-weight:700;">
+                  ● <%= order.order_status %>
+                </span>
+              </div>
+              <div style="font-size:12.5px;color:var(--muted);margin-top:2px;">
+                <%= order.created_at ? new Date(order.created_at).toLocaleString() : 'Past Order' %>
+              </div>
+            </div>
+          </div>
+
+          <div style="text-align:right;">
+            <div style="font-size:18px;font-weight:800;color:var(--ink);">$<%= parseFloat(order.total_cost || 0).toFixed(2) %></div>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
