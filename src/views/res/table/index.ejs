@@ -1,3 +1,17 @@
+<%
+const restName = (typeof restaurant !== 'undefined' && restaurant && restaurant.name)
+  ? restaurant.name
+  : (typeof user !== 'undefined' && user && user.name
+    ? user.name
+    : (locals.restaurant?.name || locals.user?.name || 'Restaurant'));
+
+const restSlug = (typeof slug !== 'undefined' && slug)
+  ? slug
+  : (typeof restaurant !== 'undefined' && restaurant?.slug
+    ? restaurant.slug
+    : (locals.slug || locals.restaurant?.slug || (tables && tables.length && tables[0].restaurant_slug) || 'restaurant'));
+%>
+
 <div class="card welcome-card" style="margin-bottom:20px;">
   <div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
@@ -41,8 +55,8 @@
             <% } %>
             <div style="flex:1;min-width:0;">
               <span style="display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--subtle);margin-bottom:2px;">Dine-In Menu Link:</span>
-              <a href="<%= table.menuPath || ('/' + slug + '/menu/' + table.table_slug) %>" target="_blank" style="color:var(--brand);text-decoration:none;font-size:12.5px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                <%= table.menuPath || ('/' + slug + '/menu/' + table.table_slug) %> ↗
+              <a href="<%= table.menuPath || ('/' + restSlug + '/menu/' + table.table_slug) %>" target="_blank" style="color:var(--brand);text-decoration:none;font-size:12.5px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                <%= table.menuPath || ('/' + restSlug + '/menu/' + table.table_slug) %> ↗
               </a>
             </div>
           </div>
@@ -54,7 +68,7 @@
             data-table-name="<%= table.table_name %>"
             data-table-slug="<%= table.table_slug %>"
             data-table-status="<%= table.status || 'available' %>"
-            data-menu-url="<%= table.menuUrl || ('/' + slug + '/menu/' + table.table_slug) %>"
+            data-menu-url="<%= table.menuUrl || ('/' + restSlug + '/menu/' + table.table_slug) %>"
             data-qr-image="<%= table.qrDataUrl || '' %>"
             style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:8px;">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -84,7 +98,7 @@
       <div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <span class="badge status-available" id="modal-table-badge">● Active Table</span>
-          <span style="font-size:12px;color:var(--muted);"><%= restaurant ? restaurant.name : 'Restaurant' %></span>
+          <span style="font-size:12px;color:var(--muted);"><%= restName %></span>
         </div>
         <h3 id="modal-table-title" style="margin:0;font-size:20px;color:var(--ink);">Table QR Code</h3>
       </div>
@@ -97,7 +111,7 @@
         <div class="placard-brand">
           <div class="placard-logo-mark">✦</div>
           <div>
-            <h4 class="placard-restaurant-name"><%= restaurant ? restaurant.name : 'Demo Restaurant' %></h4>
+            <h4 class="placard-restaurant-name"><%= restName %></h4>
             <span class="placard-subtitle">TABLE SERVICE & DIGITAL MENU</span>
           </div>
         </div>
