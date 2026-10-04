@@ -1,91 +1,138 @@
 const { Op } = require('sequelize');
-const { User, District, MenuTemplate } = require('../models');
+const { User, District, MenuTemplate, Branch } = require('../models');
 const { sanitizeString } = require('../utils/stringHelper');
 const { hashPassword } = require('../utils/password');
 
-// GET /register, /user-register  (RegisterController::index)
+// GET /register, /user-register
 async function showRegister(req, res) {
   if (req.session.userId) {
     const user = await User.findByPk(req.session.userId);
     if (user) {
       if (user.user_type === 'S') return res.redirect('/superadmin/dashboard');
       if (user.user_type === 'R') return res.redirect('/dashboard');
+      if (user.user_type === 'K') return res.redirect('/kitchen-admin/kitchen');
+      if (user.user_type === 'Co') return res.redirect(`/counter-admin/${user.slug}/counter`);
     }
   }
-  const districts = await District.findAll();
-  res.render('auth/register', { districts });
+  let districts = [];
+  try {
+    districts = await District.findAll();
+  } catch (e) {
+    districts = [];
+  }
+  res.render('auth/register', { districts, errors: [] });
 }
 
-// POST /register/store  (RegisterController::store)
-// NOTE: image/logo upload handling (MediaHelper::upload_image) is left as a
-// TODO - wire up `multer` here when you port that piece, then set
-// user.image / user.logo the same way.
+// POST /register/store
 async function storeRegister(req, res) {
-  const { name, slug: slugInput, city, address, latitude, longitude, phone, email, password, password_confirmation, remark, restaurant_type, user_type } = req.body;
+  try {
+    const {
+      name,
+      slug: slugInput,
+      city,
+      address,
+      latitude,
+      longitude,
+      phone,
+      email,
+      password,
+      password_confirmation,
+      user_type = 'R',
+    } = req.body;
 
-  if (!password || password.length < 6 || password !== password_confirmation) {
-    return res.status(422).render('auth/register', {
-      districts: await District.findAll(),
-      errors: ['Password must be at least 6 characters and match confirmation.'],
+    const errors = [];
+    if (!name || !name.trim()) errors.push('Name is required.');
+    if (!email || !email.trim()) errors.push('A valid email address is required.');
+    if (!password || password.length < 6 || password !== password_confirmation) {
+      errors.push('Password must be at least 6 characters and match confirmation.');
+    }
+
+    const cleanEmail = String(email || '').toLowerCase().trim();
+    const existing = await User.findOne({ where: { email: cleanEmail } });
+    if (existing) {
+      errors.push('The email address is already registered.');
+    }
+
+    if (errors.length) {
+      let districts = [];
+      try { districts = await District.findAll(); } catch (e) {}
+      return res.status(422).render('auth/register', { districts, errors });
+    }
+
+    let slug = sanitizeString(slugInput || name);
+    const existingSlugs = (
+      await User.findAll({ where: { slug: { [Op.like]: `%${slug}%` } }, attributes: ['slug'] })
+    ).map((u) => u.slug);
+
+    let i = 2;
+    while (existingSlugs.includes(slug)) {
+      slug = `${slug}-${i}`;
+      i++;
+    }
+
+    const now = new Date();
+    // Create approved user account
+    const user = await User.create({
+      name: name.trim(),
+      slug,
+      city: city || 'Central',
+      address: address ? address.trim() : null,
+      latlng: `${latitude || ''},${longitude || ''}`,
+      phone: phone ? phone.trim() : null,
+      email: cleanEmail,
+      password: await hashPassword(password),
+      user_type: user_type === 'C' ? 'C' : 'R',
+      status: 'approved', // Auto-approved for frictionless onboarding
+      otp: '00000',
+      theme_primary_color: '#f97316',
+      theme_secondary_color: '#ea580c',
+      theme_heading_text_color: '#ffffff',
+      theme_background_color: '#ffffff',
+      theme_outer_background_color: '#f8fafc',
+      theme_accent_color: '#10b981',
     });
-  }
 
-  const existing = await User.findOne({ where: { email } });
-  if (existing) {
-    return res.status(422).render('auth/register', {
-      districts: await District.findAll(),
-      errors: ['The email address already exists'],
-    });
-  }
+    // If Restaurant Owner, create default Main Branch & Menu Template
+    if (user.user_type === 'R') {
+      try {
+        await Branch.create({
+          restaurant_id: user.id,
+          name: 'Main Branch',
+          slug: 'main',
+          is_active: true,
+          created_at: now,
+          updated_at: now,
+        });
+      } catch (branchErr) {
+        console.warn('Branch auto-create notice:', branchErr.message);
+      }
 
-  let slug = sanitizeString(slugInput || name);
-  const existingSlugs = (
-    await User.findAll({ where: { slug: { [Op.like]: `%${slug}%` } }, attributes: ['slug'] })
-  ).map((u) => u.slug);
+      try {
+        await MenuTemplate.create({
+          user_id: user.id,
+          template_id: 1,
+          show_product_image: true,
+          show_category_image: true,
+        });
+      } catch (tplErr) {}
 
-  let i = 2;
-  while (existingSlugs.includes(slug)) {
-    slug = `${slug}-${i}`;
-    i++;
-  }
+      // Auto log-in to immediately access dashboard
+      req.session.userId = user.id;
+      return res.redirect('/dashboard');
+    }
 
-  const otp = String(Math.floor(10000 + Math.random() * 90000)).slice(0, 5);
-
-  const user = await User.create({
-    name,
-    slug,
-    city,
-    address,
-    latlng: `${latitude || ''},${longitude || ''}`,
-    phone,
-    email,
-    password: await hashPassword(password),
-    remark,
-    restaurant_type,
-    user_type,
-    status: 'pending',
-    otp,
-    theme_primary_color: '#333333',
-    theme_secondary_color: '#FA983A',
-    theme_heading_text_color: '#ffffff',
-    theme_background_color: '#FDFBF0',
-    theme_outer_background_color: '#f5f1e6',
-    theme_accent_color: '#28a745',
-  });
-
-  await MenuTemplate.create({ user_id: user.id, template_id: 1 });
-
-  // NOTE: OtpEmail send dropped here - see note in authController about
-  // wiring up outbound email.
-
-  if (user.user_type === 'R') {
-    const encoded = Buffer.from(String(user.id)).toString('base64');
-    return res.redirect(`/otp/${encoded}`);
-  }
-  if (user.user_type === 'C') {
+    // If Customer Account, auto log-in
+    req.session.userId = user.id;
     return res.redirect('/login');
+  } catch (err) {
+    console.error('Registration error:', err);
+    let districts = [];
+    try { districts = await District.findAll(); } catch (e) {}
+    return res.status(500).render('auth/register', {
+      districts,
+      errors: ['An unexpected error occurred while creating your account. Please try again.'],
+    });
   }
-  return res.redirect('/login');
 }
 
 module.exports = { showRegister, storeRegister };

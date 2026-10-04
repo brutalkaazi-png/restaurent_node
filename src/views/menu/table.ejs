@@ -1,11 +1,4 @@
 <%
-// NOTE: the original Blade view delegates to an <x-menu-layout> component
-// and then includes one of several swappable "menu.templates.template-N"
-// partials chosen by menuTemplate.template_id. That template-picker system
-// is a separate module (SuperAdmin > Template builder) and hasn't been
-// ported yet, so this is a single, functional default layout instead.
-%>
-<%
 // Process any active promotions and table offers
 const allOffers = [];
 if (typeof promotions !== 'undefined' && promotions && promotions.length) {
@@ -30,9 +23,24 @@ if (typeof promotions !== 'undefined' && promotions && promotions.length) {
     }
   });
 }
-%>
-<% function mediaUrl(path) { return path ? (path.startsWith('assets/') ? '/' + path : '/uploads/' + path) : ''; } %>
 
+function mediaUrl(path) {
+  if (!path) return '';
+  return path.startsWith('assets/') ? '/' + path : '/uploads/' + path;
+}
+
+function scriptJson(value) {
+  return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, character => ({
+    '<': '\\u003c',
+    '>': '\\u003e',
+    '&': '\\u0026',
+    '\u2028': '\\u2028',
+    '\u2029': '\\u2029',
+  }[character]));
+}
+%>
+
+<!-- RESTAURANT & TABLE HEADER -->
 <div class="card menu-restaurant-header" style="margin-bottom:16px;">
   <% if (restaurant.logo) { %>
     <img src="<%= mediaUrl(restaurant.logo) %>" alt="<%= restaurant.name %>" class="menu-restaurant-logo">
@@ -49,6 +57,41 @@ if (typeof promotions !== 'undefined' && promotions && promotions.length) {
     </div>
     <h2 style="font-size:24px;margin-bottom:4px;color:var(--ink);"><%= restaurant.name %></h2>
     <p style="margin:0;color:var(--muted);font-size:13.5px;"><%= restaurant.address || 'Browse available dishes and special offers, then send orders directly to the kitchen.' %></p>
+  </div>
+</div>
+
+<!-- LIVE ORDER PROGRESS TRACKER (KDS Sync) -->
+<div id="live-order-tracker" class="card" style="display:none;margin-bottom:16px;background:linear-gradient(135deg, #0f172a 0%, #1e293b 100%);color:#fff;border:1px solid #334155;box-shadow:0 4px 12px rgba(15,23,42,0.3);">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="display:inline-grid;place-items:center;width:34px;height:34px;border-radius:8px;background:var(--brand);color:#fff;font-size:16px;">♨</span>
+      <div>
+        <h4 style="margin:0;font-size:15px;color:#fff;">Kitchen Order Status</h4>
+        <span id="tracker-summary-text" style="font-size:12px;color:#94a3b8;">Your order is with the kitchen</span>
+      </div>
+    </div>
+    <span id="tracker-active-badge" class="badge" style="background:#ea580c;color:#fff;font-weight:700;font-size:11px;">
+      ● In Progress
+    </span>
+  </div>
+
+  <!-- STEPPER TIMELINE -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;position:relative;">
+    <div id="step-received" class="tracker-step" style="text-align:center;padding:10px 8px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);">
+      <div class="step-icon-bubble" style="font-size:18px;margin-bottom:4px;">📋</div>
+      <strong style="font-size:12px;display:block;color:#fff;">1. Placed</strong>
+      <span style="font-size:10px;color:#94a3b8;">Sent to line</span>
+    </div>
+    <div id="step-cooking" class="tracker-step" style="text-align:center;padding:10px 8px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);">
+      <div class="step-icon-bubble" style="font-size:18px;margin-bottom:4px;">🍳</div>
+      <strong style="font-size:12px;display:block;color:#fff;">2. Cooking</strong>
+      <span style="font-size:10px;color:#94a3b8;">Chefs preparing</span>
+    </div>
+    <div id="step-served" class="tracker-step" style="text-align:center;padding:10px 8px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);">
+      <div class="step-icon-bubble" style="font-size:18px;margin-bottom:4px;">🍽️</div>
+      <strong style="font-size:12px;display:block;color:#fff;">3. Served</strong>
+      <span style="font-size:10px;color:#94a3b8;">Enjoy your meal!</span>
+    </div>
   </div>
 </div>
 
@@ -130,7 +173,9 @@ if (typeof promotions !== 'undefined' && promotions && promotions.length) {
               </div>
             </div>
           </div>
-          <button type="button" class="btn add-item-btn" data-item-id="<%= offer.item.id %>" style="min-width:100px;font-weight:700;background:#ea580c;border-color:#ea580c;color:#fff;">
+          <button type="button" class="btn quick-add-offer-btn"
+            data-item-id="<%= offer.item.id %>"
+            style="min-width:100px;font-weight:700;background:#ea580c;border-color:#ea580c;color:#fff;">
             + Add Offer
           </button>
         </div>
@@ -183,34 +228,31 @@ if (typeof promotions !== 'undefined' && promotions && promotions.length) {
                     <div class="dish-desc"><%= item.item_description %></div>
                   <% } %>
 
-                  <!-- VARIANT PICKER IF APPLICABLE -->
-                  <% if (item.variants && item.variants.length) { %>
-                    <div style="margin-top:8px;margin-bottom:6px;">
-                      <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px;">Select Option / Size:</label>
-                      <select class="item-variant-select" data-item-id="<%= item.id %>" style="font-size:12.5px;padding:4px 8px;border-radius:6px;border:1px solid var(--line);background:#fff;color:var(--ink);max-width:220px;">
-                        <% item.variants.forEach(function(v) { %>
-                          <option value="<%= v.id %>" data-price="<%= parseFloat(v.price).toFixed(2) %>">
-                            <%= v.name %> — $<%= parseFloat(v.price).toFixed(2) %>
-                          </option>
-                        <% }) %>
-                      </select>
-                    </div>
-                  <% } else { %>
-                    <div class="dish-price" style="margin-top:6px;">
-                      <% if (item.discounted_price !== null && item.discounted_price !== undefined) { %>
-                        <s style="color:var(--subtle);font-weight:400;margin-right:6px;">$<%= parseFloat(item.price).toFixed(2) %></s>
-                        <strong class="dish-price-discount">$<%= item.discounted_price.toFixed(2) %></strong>
-                      <% } else { %>
-                        $<%= parseFloat(item.price).toFixed(2) %>
-                      <% } %>
-                    </div>
-                  <% } %>
+                  <div class="dish-price" style="margin-top:6px;">
+                    <% if (item.variants && item.variants.length) { %>
+                      <span style="color:var(--ink-secondary);font-size:12px;">From </span>
+                      $<%= Math.min(...item.variants.map(v => parseFloat(v.price))).toFixed(2) %>
+                    <% } else if (item.discounted_price !== null && item.discounted_price !== undefined) { %>
+                      <s style="color:var(--subtle);font-weight:400;margin-right:6px;">$<%= parseFloat(item.price).toFixed(2) %></s>
+                      <strong class="dish-price-discount">$<%= item.discounted_price.toFixed(2) %></strong>
+                    <% } else { %>
+                      $<%= parseFloat(item.price).toFixed(2) %>
+                    <% } %>
+                  </div>
                 </div>
               </div>
 
               <div>
-                <button type="button" class="btn add-item-btn" data-item-id="<%= item.id %>" <%= item.sold_out ? 'disabled aria-label="Sold out"' : '' %> style="<%= item.sold_out ? '' : 'min-width:96px;font-weight:700;' %>">
-                  <%= item.sold_out ? 'Sold out' : '+ Add' %>
+                <button type="button" class="btn open-customize-btn"
+                  data-item-id="<%= item.id %>"
+                  data-item-name="<%= item.item_name %>"
+                  data-item-desc="<%= item.item_description || '' %>"
+                  data-item-price="<%= item.discounted_price !== null && item.discounted_price !== undefined ? item.discounted_price : item.price %>"
+                  data-variants='<%- JSON.stringify(item.variants || []) %>'
+                  data-toppings='<%- JSON.stringify(item.toppings || []) %>'
+                  <%= item.sold_out ? 'disabled aria-label="Sold out"' : '' %>
+                  style="<%= item.sold_out ? '' : 'min-width:96px;font-weight:700;' %>">
+                  <%= item.sold_out ? 'Sold out' : '+ Customize & Add' %>
                 </button>
               </div>
             </div>
@@ -236,21 +278,42 @@ if (typeof promotions !== 'undefined' && promotions && promotions.length) {
 </div>
 
 <!-- NEED ASSISTANCE / STAFF CALL SUITE -->
-<div class="card" style="margin-top:28px;margin-bottom:80px;">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-    <span style="font-size:20px;">🛎️</span>
-    <h3 style="margin:0;">Need assistance at Table <%= table.table_name %>?</h3>
+<div class="card" style="margin-top:28px;margin-bottom:80px;border:1.5px solid var(--line);box-shadow:var(--shadow-sm);background:#ffffff;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--brand-soft);color:var(--brand);font-size:18px;">🛎️</span>
+      <div>
+        <h3 style="margin:0;font-size:16.5px;color:var(--ink);">Need Assistance at Table <%= table.table_name %>?</h3>
+        <span style="font-size:12px;color:var(--muted);">Tap any service bell to notify your floor server instantly</span>
+      </div>
+    </div>
   </div>
-  <p style="color:var(--muted);font-size:13.5px;margin-bottom:14px;">Notify floor staff or request bill with one tap:</p>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;">
-    <button type="button" class="btn staff-call-btn" data-type="general">🔔 Call staff</button>
-    <button type="button" class="btn btn-secondary staff-call-btn" data-type="water">💧 Request water</button>
-    <button type="button" class="btn btn-secondary staff-call-btn" data-type="bill">💳 Request bill</button>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:12px;">
+    <button type="button" class="btn staff-call-btn" data-type="general" style="padding:10px;font-size:13px;font-weight:700;">
+      🔔 Call Server
+    </button>
+    <button type="button" class="btn btn-secondary staff-call-btn" data-type="water" style="padding:10px;font-size:13px;font-weight:600;">
+      💧 Water Refill
+    </button>
+    <button type="button" class="btn btn-secondary staff-call-btn" data-type="cutlery" style="padding:10px;font-size:13px;font-weight:600;">
+      🍴 Extra Cutlery
+    </button>
+    <button type="button" class="btn btn-secondary staff-call-btn" data-type="bill" style="padding:10px;font-size:13px;font-weight:600;">
+      💳 Request Check
+    </button>
   </div>
-  <p id="staff-call-message" role="status" aria-live="polite" style="margin-top:12px;font-size:13px;font-weight:600;color:var(--brand);"></p>
+
+  <!-- STATUS BANNER -->
+  <div id="staff-call-feedback" style="display:none;margin-top:12px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:700;align-items:center;gap:8px;">
+    <span id="call-feedback-icon">✓</span>
+    <span id="staff-call-message"></span>
+  </div>
 </div>
 
-<!-- CART & ORDER CONFIRMATION MODAL -->
+<!-- ========================================== -->
+<!-- 1. CART & ORDER TAB MODAL (FULLY CLOSED)   -->
+<!-- ========================================== -->
 <div id="table-cart-modal" class="cart-modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="cart-modal-title">
   <div class="cart-modal-container">
     <div class="cart-modal-header">
@@ -273,10 +336,74 @@ if (typeof promotions !== 'undefined' && promotions && promotions.length) {
     <div class="cart-modal-footer" id="cart-modal-footer" style="padding:16px 20px;border-top:1px solid var(--line);background:#fafaf9;display:flex;align-items:center;justify-content:space-between;gap:12px;">
       <div>
         <span style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:700;">Estimated Total</span>
-        <strong id="cart-modal-total" style="font-size:18px;color:var(--ink);">$0.00</strong>
+        <strong id="cart-modal-total" style="font-size:18px;color:var(--brand);">$0.00</strong>
       </div>
       <button type="button" id="confirm-order-btn" class="btn" style="padding:10px 20px;font-weight:700;box-shadow:var(--shadow-brand);">
         Send Order to Kitchen 🚀
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- 2. DISH CUSTOMIZATION MODAL (FULLY CLOSED) -->
+<!-- ========================================== -->
+<div id="customize-item-modal" class="cart-modal-backdrop" style="display:none;" onclick="if(event.target === this) closeCustomizeModal()" role="dialog" aria-modal="true" aria-labelledby="modal-dish-name">
+  <div class="cart-modal-container" style="max-width:480px;">
+    <div class="cart-modal-header">
+      <div>
+        <span id="modal-dish-badge" class="badge status-available" style="font-size:11px;margin-bottom:3px;display:inline-block;">Dish Customization</span>
+        <h3 id="modal-dish-name" style="margin:0;font-size:19px;color:var(--ink);">Item Name</h3>
+      </div>
+      <button type="button" id="close-customize-modal-btn" onclick="closeCustomizeModal()" class="cart-modal-close" aria-label="Close modal">&times;</button>
+    </div>
+
+    <div class="cart-modal-body" style="display:grid;gap:16px;">
+      <p id="modal-dish-desc" style="font-size:13px;color:var(--muted);margin:0;"></p>
+
+      <!-- VARIANT OPTIONS (Sizes/Portions) -->
+      <div id="modal-variants-section" style="display:none;">
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">
+          Choose Size / Portion *
+        </label>
+        <div id="modal-variants-list" style="display:grid;gap:8px;"></div>
+      </div>
+
+      <!-- TOPPING ADD-ONS -->
+      <div id="modal-toppings-section" style="display:none;">
+        <label style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px;">
+          Optional Add-ons & Toppings
+        </label>
+        <div id="modal-toppings-list" style="display:grid;gap:8px;"></div>
+      </div>
+
+      <!-- SPECIAL INSTRUCTIONS TEXTAREA -->
+      <div>
+        <label for="modal-dish-notes" style="display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">
+          Kitchen Instructions (Optional)
+        </label>
+        <textarea id="modal-dish-notes" rows="2" placeholder="e.g. Extra spicy, dressing on the side, nut allergy..." style="margin:0;font-size:13px;padding:8px 12px;border-radius:8px;"></textarea>
+      </div>
+
+      <!-- QUANTITY SELECTOR -->
+      <div style="display:flex;align-items:center;justify-content:space-between;background:#f8fafc;padding:10px 14px;border-radius:8px;border:1px solid var(--line);">
+        <span style="font-size:13px;font-weight:700;color:var(--ink);">Quantity</span>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button type="button" id="qty-minus-btn" class="btn btn-secondary" style="width:32px;height:32px;padding:0;font-size:16px;font-weight:800;">-</button>
+          <span id="modal-qty-display" style="font-size:16px;font-weight:800;color:var(--ink);min-width:20px;text-align:center;">1</span>
+          <button type="button" id="qty-plus-btn" class="btn btn-secondary" style="width:32px;height:32px;padding:0;font-size:16px;font-weight:800;">+</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL FOOTER -->
+    <div class="cart-modal-footer" style="padding:16px 20px;border-top:1px solid var(--line);background:#fafaf9;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div>
+        <span style="display:block;font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:700;">Total Price</span>
+        <strong id="modal-total-price" style="font-size:20px;color:var(--brand);">$0.00</strong>
+      </div>
+      <button type="button" id="modal-add-to-cart-btn" class="btn" style="padding:11px 22px;font-weight:700;box-shadow:var(--shadow-brand);">
+        + Add to Tab
       </button>
     </div>
   </div>
@@ -288,21 +415,19 @@ if (typeof promotions !== 'undefined' && promotions && promotions.length) {
     inset: 0;
     background: rgba(15, 23, 42, 0.65);
     backdrop-filter: blur(4px);
-    display: flex;
+    display: none;
     align-items: flex-end;
     justify-content: center;
-    z-index: 9999;
-    animation: cartFadeIn 0.18s ease-out;
+    z-index: 99999;
+  }
+  .cart-modal-backdrop.is-open {
+    display: flex !important;
   }
   @media (min-width: 640px) {
     .cart-modal-backdrop {
       align-items: center;
       padding: 20px;
     }
-  }
-  @keyframes cartFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
   }
   .cart-modal-container {
     background: #ffffff;
@@ -356,52 +481,208 @@ if (typeof promotions !== 'undefined' && promotions && promotions.length) {
   }
 </style>
 
+<!-- Load Socket.IO client library -->
+<script src="/socket.io/socket.io.js"></script>
+
 <script>
-  const tableId = <%= table.id %>;
-
-  // Staff Call handlers
-  document.querySelectorAll('.staff-call-btn').forEach((button) => button.addEventListener('click', async () => {
-    button.disabled = true;
-    const origText = button.textContent;
-    button.textContent = 'Sending...';
-    const message = document.getElementById('staff-call-message');
-    try {
-      const response = await fetch(`/staff-call/${tableId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: button.dataset.type }),
-      });
-      const contentType = response.headers.get('content-type') || '';
-      const data = contentType.includes('application/json') ? await response.json() : { message: 'Staff call sent.' };
-      message.textContent = data.message || 'Staff member notified.';
-      button.textContent = origText;
-      setTimeout(() => { message.textContent = ''; }, 4000);
-      button.disabled = false;
-    } catch (error) {
-      message.textContent = 'Unable to contact the restaurant. Please try again.';
-      button.textContent = origText;
-      button.disabled = false;
+  // ==========================================
+  // TOP-LEVEL MODAL CONTROLS (ALWAYS AVAILABLE)
+  // ==========================================
+  function openCartModal() {
+    const modal = document.getElementById('table-cart-modal');
+    if (modal) {
+      modal.style.display = 'flex';
+      modal.classList.add('is-open');
     }
-  }));
+    document.body.style.overflow = 'hidden';
+    loadCartDetails();
+  }
 
-  // Add Item to Table Tab
-  document.querySelectorAll('.add-item-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
+  function closeCartModal() {
+    const modal = document.getElementById('table-cart-modal');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.remove('is-open');
+    }
+    document.body.style.overflow = '';
+  }
+
+  function closeCustomizeModal() {
+    const customModal = document.getElementById('customize-item-modal');
+    if (customModal) {
+      customModal.style.setProperty('display', 'none', 'important');
+      customModal.classList.remove('is-open');
+    }
+    document.body.style.overflow = '';
+  }
+
+  function loadCartDetails() {
+    const content = document.getElementById('cart-modal-content');
+    const totalEl = document.getElementById('cart-modal-total');
+    const confirmBtn = document.getElementById('confirm-order-btn');
+
+    if (content) {
+      content.innerHTML = '<div style="text-align:center;padding:32px 16px;color:var(--muted);">Loading order details...</div>';
+    }
+
+    fetch('/get-tablecart?show=my')
+      .then(r => r.json())
+      .then(data => {
+        if (content) {
+          content.innerHTML = data.html || '<p style="text-align:center;color:var(--muted);padding:24px 0;">No items in order yet.</p>';
+        }
+        if (totalEl) {
+          totalEl.textContent = '$' + (data.total ? Number(data.total).toFixed(2) : '0.00');
+        }
+
+        if (confirmBtn) {
+          if (!data.unconfirmed_item_count || data.unconfirmed_item_count === 0) {
+            confirmBtn.style.display = 'none';
+          } else {
+            confirmBtn.style.display = 'inline-flex';
+            confirmBtn.textContent = 'Send Order to Kitchen (' + data.unconfirmed_item_count + ') 🚀';
+          }
+        }
+
+        if (content) {
+          content.querySelectorAll('.delete-cart-item').forEach(delBtn => {
+            delBtn.addEventListener('click', () => {
+              const delId = delBtn.dataset.itemId;
+              fetch('/table-order/delete/' + delId).then(() => {
+                loadCartDetails();
+                refreshCart();
+              });
+            });
+          });
+        }
+        // Connect shortcut confirm button inside the modal body
+        const shortcutConfirmBtn = content.querySelector('#shortcut-confirm-pay-btn');
+        if (shortcutConfirmBtn && confirmBtn) {
+          shortcutConfirmBtn.addEventListener('click', () => {
+            confirmBtn.click();
+          });
+        }
+      })
+      .catch((err) => {
+        if (content) {
+          content.innerHTML = '<p style="text-align:center;color:#be123c;padding:24px 0;">Could not load cart details. Please try again.</p>';
+        }
+      });
+  }
+
+  // ==========================================
+  // PAGE INITIALIZATION
+  // ==========================================
+  const currentTableId = <%= table.id %>;
+  const currentRestaurantId = <%= restaurant.id %>;
+
+  // --- 1. REAL-TIME KDS TRACKER ---
+  const trackerBox = document.getElementById('live-order-tracker');
+  const stepReceived = document.getElementById('step-received');
+  const stepCooking = document.getElementById('step-cooking');
+  const stepServed = document.getElementById('step-served');
+  const trackerSummary = document.getElementById('tracker-summary-text');
+  const trackerBadge = document.getElementById('tracker-active-badge');
+
+  function updateTrackerUI(tableStatus, items) {
+    if (!trackerBox) return;
+    if (!items || items.length === 0) {
+      trackerBox.style.display = 'none';
+      return;
+    }
+
+    const hasConfirmedOrCooking = items.some(i => ['order_food', 'order_drink', 'preparing', 'confirmed'].includes(i.status));
+    const allServed = items.every(i => i.status === 'order_delivered');
+    const isCooking = items.some(i => i.status === 'preparing');
+
+    if (!hasConfirmedOrCooking && !allServed) {
+      trackerBox.style.display = 'none';
+      return;
+    }
+
+    trackerBox.style.display = 'block';
+
+    [stepReceived, stepCooking, stepServed].forEach(s => {
+      if (s) {
+        s.style.background = 'rgba(255,255,255,0.06)';
+        s.style.borderColor = 'rgba(255,255,255,0.1)';
+      }
+    });
+
+    if (allServed) {
+      if (stepServed) {
+        stepServed.style.background = 'rgba(22, 163, 74, 0.35)';
+        stepServed.style.borderColor = '#16a34a';
+      }
+      if (trackerSummary) trackerSummary.textContent = 'All dishes have been served to Table ' + <%- scriptJson(table.table_name) %>;
+      if (trackerBadge) {
+        trackerBadge.textContent = '✓ Served';
+        trackerBadge.style.background = '#16a34a';
+      }
+    } else if (isCooking || tableStatus === 'preparing') {
+      if (stepCooking) {
+        stepCooking.style.background = 'rgba(234, 88, 12, 0.35)';
+        stepCooking.style.borderColor = '#ea580c';
+      }
+      if (trackerSummary) trackerSummary.textContent = 'Chefs are currently preparing your dishes in the kitchen';
+      if (trackerBadge) {
+        trackerBadge.textContent = '🔥 Cooking';
+        trackerBadge.style.background = '#ea580c';
+      }
+    } else {
+      if (stepReceived) {
+        stepReceived.style.background = 'rgba(59, 130, 246, 0.35)';
+        stepReceived.style.borderColor = '#3b82f6';
+      }
+      if (trackerSummary) trackerSummary.textContent = 'Order queued and sent to kitchen display';
+      if (trackerBadge) {
+        trackerBadge.textContent = '📋 Queued';
+        trackerBadge.style.background = '#3b82f6';
+      }
+    }
+  }
+
+  function pollOrderStatus() {
+    fetch('/get-tablecart?show=my')
+      .then(r => r.json())
+      .then(data => {
+        let items = [];
+        try {
+          items = Object.values(JSON.parse(data.cart || '{}'));
+        } catch(e) {}
+        updateTrackerUI(data.status, items);
+      })
+      .catch(() => {});
+  }
+
+  try {
+    if (typeof io !== 'undefined') {
+      const socket = io();
+      socket.emit('join-restaurant', currentRestaurantId);
+      socket.on('restaurant-update', () => {
+        pollOrderStatus();
+        refreshCart();
+      });
+    }
+  } catch(e) {}
+
+  pollOrderStatus();
+
+  // --- 2. QUICK ADD OFFERS ---
+  document.querySelectorAll('.quick-add-offer-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
       const itemId = btn.dataset.itemId;
-      const card = btn.closest('.dish-card');
-      const variantSelect = card ? card.querySelector('.item-variant-select') : null;
-      const variantId = variantSelect ? variantSelect.value : null;
-
       const orig = btn.textContent;
       btn.textContent = 'Adding...';
       btn.disabled = true;
 
       fetch('/add-table-menu', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
-          table_id: tableId,
-          items: [{ item_id: itemId, quantity: 1, variant_id: variantId }],
+          table_id: currentTableId,
+          items: [{ item_id: itemId, quantity: 1 }],
         }),
       })
         .then(r => r.json())
@@ -412,6 +693,7 @@ if (typeof promotions !== 'undefined' && promotions && promotions.length) {
             btn.disabled = false;
           }, 800);
           refreshCart();
+          pollOrderStatus();
         })
         .catch(() => {
           btn.textContent = orig;
@@ -420,127 +702,335 @@ if (typeof promotions !== 'undefined' && promotions && promotions.length) {
     });
   });
 
-  // Cart Modal & Synchronization
-  const cartModal = document.getElementById('table-cart-modal');
-  const closeCartBtn = document.getElementById('close-cart-modal-btn');
-  const cartContent = document.getElementById('cart-modal-content');
-  const cartModalTotal = document.getElementById('cart-modal-total');
-  const confirmOrderBtn = document.getElementById('confirm-order-btn');
-  const cartSummary = document.getElementById('cart-summary');
-  const viewCartBtn = document.getElementById('view-cart-btn');
+  // --- 3. ITEM CUSTOMIZATION MODAL ---
+  const customModal = document.getElementById('customize-item-modal');
+  const modalDishName = document.getElementById('modal-dish-name');
+  const modalDishDesc = document.getElementById('modal-dish-desc');
+  const modalVariantsSection = document.getElementById('modal-variants-section');
+  const modalVariantsList = document.getElementById('modal-variants-list');
+  const modalToppingsSection = document.getElementById('modal-toppings-section');
+  const modalToppingsList = document.getElementById('modal-toppings-list');
+  const modalNotes = document.getElementById('modal-dish-notes');
+  const modalQtyDisplay = document.getElementById('modal-qty-display');
+  const modalTotalPrice = document.getElementById('modal-total-price');
+  const modalAddToCartBtn = document.getElementById('modal-add-to-cart-btn');
 
-  function openCartModal() {
-    cartModal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-    loadCartDetails();
+  let currentItem = null;
+  let currentQty = 1;
+
+  document.querySelectorAll('.open-customize-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const variants = JSON.parse(btn.dataset.variants || '[]');
+      const toppings = JSON.parse(btn.dataset.toppings || '[]');
+
+      currentItem = {
+        id: btn.dataset.itemId,
+        name: btn.dataset.itemName,
+        desc: btn.dataset.itemDesc,
+        basePrice: parseFloat(btn.dataset.itemPrice) || 0,
+        variants,
+        toppings,
+      };
+
+      currentQty = 1;
+      if (modalQtyDisplay) modalQtyDisplay.textContent = '1';
+      if (modalNotes) modalNotes.value = '';
+      if (modalDishName) modalDishName.textContent = currentItem.name;
+      if (modalDishDesc) modalDishDesc.textContent = currentItem.desc;
+
+      if (variants.length > 0 && modalVariantsSection && modalVariantsList) {
+        modalVariantsSection.style.display = 'block';
+        modalVariantsList.innerHTML = variants.map((v, i) => `
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:#fff;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <input type="radio" name="modal_variant" value="${v.id}" data-price="${v.price}" ${i === 0 ? 'checked' : ''} style="margin:0;">
+              <span style="font-weight:600;font-size:13.5px;color:var(--ink);">${v.name}</span>
+            </div>
+            <strong style="color:var(--brand);font-size:13.5px;">$${parseFloat(v.price).toFixed(2)}</strong>
+          </label>
+        `).join('');
+      } else if (modalVariantsSection) {
+        modalVariantsSection.style.display = 'none';
+        modalVariantsList.innerHTML = '';
+      }
+
+      if (toppings.length > 0 && modalToppingsSection && modalToppingsList) {
+        modalToppingsSection.style.display = 'block';
+        modalToppingsList.innerHTML = toppings.map(t => `
+          <label style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:#fff;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" name="modal_topping" value="${t.id}" data-price="${t.price}" style="margin:0;">
+              <span style="font-size:13px;color:var(--ink);">${t.name}</span>
+            </div>
+            <span style="color:var(--muted);font-size:13px;">+$${parseFloat(t.price).toFixed(2)}</span>
+          </label>
+        `).join('');
+      } else if (modalToppingsSection) {
+        modalToppingsSection.style.display = 'none';
+        modalToppingsList.innerHTML = '';
+      }
+
+      if (modalVariantsList) {
+        modalVariantsList.querySelectorAll('input').forEach(r => r.addEventListener('change', recalcModalPrice));
+      }
+      if (modalToppingsList) {
+        modalToppingsList.querySelectorAll('input').forEach(c => c.addEventListener('change', recalcModalPrice));
+      }
+
+      recalcModalPrice();
+      if (customModal) {
+        customModal.style.setProperty('display', 'flex', 'important');
+        customModal.classList.add('is-open');
+      }
+      document.body.style.overflow = 'hidden';
+    });
+  });
+
+  function recalcModalPrice() {
+    if (!currentItem) return;
+    let unitPrice = currentItem.basePrice;
+
+    if (modalVariantsList) {
+      const selectedVariant = modalVariantsList.querySelector('input[name="modal_variant"]:checked');
+      if (selectedVariant) {
+        unitPrice = parseFloat(selectedVariant.dataset.price) || unitPrice;
+      }
+    }
+
+    if (modalToppingsList) {
+      modalToppingsList.querySelectorAll('input[name="modal_topping"]:checked').forEach(t => {
+        unitPrice += parseFloat(t.dataset.price) || 0;
+      });
+    }
+
+    const total = unitPrice * currentQty;
+    if (modalTotalPrice) modalTotalPrice.textContent = '$' + total.toFixed(2);
   }
 
-  function closeCartModal() {
-    cartModal.style.display = 'none';
-    document.body.style.overflow = '';
+  const qtyPlus = document.getElementById('qty-plus-btn');
+  if (qtyPlus) {
+    qtyPlus.addEventListener('click', () => {
+      currentQty++;
+      if (modalQtyDisplay) modalQtyDisplay.textContent = currentQty;
+      recalcModalPrice();
+    });
   }
 
-  closeCartBtn.addEventListener('click', closeCartModal);
-  cartModal.addEventListener('click', (e) => {
-    if (e.target === cartModal) closeCartModal();
-  });
-  viewCartBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    openCartModal();
-  });
-  cartSummary.addEventListener('click', openCartModal);
+  const qtyMinus = document.getElementById('qty-minus-btn');
+  if (qtyMinus) {
+    qtyMinus.addEventListener('click', () => {
+      if (currentQty > 1) {
+        currentQty--;
+        if (modalQtyDisplay) modalQtyDisplay.textContent = currentQty;
+        recalcModalPrice();
+      }
+    });
+  }
 
-  function loadCartDetails() {
-    fetch('/get-tablecart?show=my')
-      .then(r => r.json())
-      .then(data => {
-        cartContent.innerHTML = data.html || '<p style="color:var(--muted);">No items in order yet.</p>';
-        cartModalTotal.textContent = '$' + (data.total ? data.total.toFixed(2) : '0.00');
-        
-        // Hide confirm button if no unconfirmed items
-        if (data.unconfirmed_item_count === 0) {
-          confirmOrderBtn.style.display = 'none';
-        } else {
-          confirmOrderBtn.style.display = 'inline-flex';
-          confirmOrderBtn.textContent = 'Send Order to Kitchen (' + data.unconfirmed_item_count + ') 🚀';
-        }
+  if (modalAddToCartBtn) {
+    modalAddToCartBtn.addEventListener('click', async () => {
+      if (!currentItem) return;
+      modalAddToCartBtn.disabled = true;
+      modalAddToCartBtn.textContent = 'Adding to Tab...';
 
-        // Attach delete handlers inside cart
-        cartContent.querySelectorAll('.delete-cart-item').forEach(delBtn => {
-          delBtn.addEventListener('click', () => {
-            const delId = delBtn.dataset.itemId;
-            fetch('/table-order/delete/' + delId)
-              .then(() => {
-                loadCartDetails();
-                refreshCart();
-              });
-          });
+      let variantId = null;
+      if (modalVariantsList) {
+        const selectedVariant = modalVariantsList.querySelector('input[name="modal_variant"]:checked');
+        variantId = selectedVariant ? selectedVariant.value : null;
+      }
+
+      let selectedToppings = [];
+      if (modalToppingsList) {
+        selectedToppings = Array.from(modalToppingsList.querySelectorAll('input[name="modal_topping"]:checked')).map(t => parseInt(t.value, 10));
+      }
+      const comment = modalNotes ? modalNotes.value.trim() : '';
+
+      try {
+        const res = await fetch('/add-table-menu', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            table_id: currentTableId,
+            items: [{
+              item_id: currentItem.id,
+              variant_id: variantId,
+              quantity: currentQty,
+              comment: comment,
+              toppings: selectedToppings
+            }]
+          })
         });
+        const data = await res.json();
+        modalAddToCartBtn.disabled = false;
+        modalAddToCartBtn.textContent = '+ Add to Tab';
 
-        // Attach shortcut confirm button if rendered inside the template
-        const shortcutBtn = document.getElementById('shortcut-confirm-pay-btn');
-        if (shortcutBtn) {
-          shortcutBtn.addEventListener('click', handleConfirmOrder);
-        }
-      })
-      .catch(() => {
-        cartContent.innerHTML = '<p style="color:#b91c1c;">Could not load cart details. Please try again.</p>';
-      });
-  }
-
-  function handleConfirmOrder() {
-    confirmOrderBtn.disabled = true;
-    confirmOrderBtn.textContent = 'Sending to Kitchen...';
-
-    fetch('/tablecart/store', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ table_id: tableId }),
-    })
-      .then(r => r.json())
-      .then(res => {
-        confirmOrderBtn.disabled = false;
-        if (res.success) {
-          loadCartDetails();
+        if (res.ok) {
+          closeCustomizeModal();
           refreshCart();
+          pollOrderStatus();
         } else {
-          alert(res.message || 'Could not place order.');
+          alert(data.error || 'Could not add item to tab.');
         }
-      })
-      .catch(() => {
-        confirmOrderBtn.disabled = false;
-        alert('Network error while placing order.');
-      });
+      } catch(err) {
+        modalAddToCartBtn.disabled = false;
+        modalAddToCartBtn.textContent = '+ Add to Tab';
+        alert('Network error while adding to order.');
+      }
+    });
   }
 
-  confirmOrderBtn.addEventListener('click', handleConfirmOrder);
+  // --- 4. CONFIRM ORDER TO KITCHEN ---
+  const confirmOrderBtn = document.getElementById('confirm-order-btn');
+  if (confirmOrderBtn) {
+    confirmOrderBtn.addEventListener('click', () => {
+      confirmOrderBtn.disabled = true;
+      confirmOrderBtn.textContent = 'Sending to Kitchen...';
+
+      fetch('/tablecart/store', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table_id: currentTableId }),
+      })
+        .then(r => r.json())
+        .then(res => {
+          confirmOrderBtn.disabled = false;
+          if (res.success) {
+            loadCartDetails();
+            refreshCart();
+            pollOrderStatus();
+          } else {
+            alert(res.message || 'Could not place order.');
+          }
+        })
+        .catch(() => {
+          confirmOrderBtn.disabled = false;
+          alert('Network error while placing order.');
+        });
+    });
+  }
 
   function refreshCart() {
     fetch('/get-tablecart?show=my')
       .then(r => r.json())
       .then(data => {
-        const count = data.all_orders_count || 0;
+        const unconfirmed = Number(data.unconfirmed_item_count) || 0;
+        const confirmed = Number(data.confirmed_item_count) || 0;
+        const totalItemsInTab = unconfirmed + confirmed;
         const total = (data.total || 0).toFixed(2);
-        const unconfirmed = data.unconfirmed_item_count || 0;
 
         const title = document.getElementById('cart-summary-title');
         const subtitle = document.getElementById('cart-summary-subtitle');
+        const viewCartBtn = document.getElementById('view-cart-btn');
+
         if (title && subtitle) {
-          if (count > 0) {
-            title.textContent = count + ' item' + (count > 1 ? 's' : '') + ' on Table Tab ($' + total + ')';
-            subtitle.textContent = unconfirmed > 0 ? (unconfirmed + ' unconfirmed — tap to send to kitchen') : 'All items confirmed to kitchen';
-            viewCartBtn.textContent = 'Review Tab (' + count + ') ↗';
+          if (totalItemsInTab > 0) {
+            title.textContent = totalItemsInTab + ' item' + (totalItemsInTab > 1 ? 's' : '') + ' on Table Tab ($' + total + ')';
+            subtitle.textContent = unconfirmed > 0 ? (unconfirmed + ' unconfirmed — tap to review & send') : 'All items confirmed to kitchen';
+            if (viewCartBtn) viewCartBtn.textContent = 'Review Tab (' + totalItemsInTab + ') ↗';
           } else {
-            title.textContent = 'Table ' + <%= JSON.stringify(table.table_name) %> + ' Tab';
+            title.textContent = 'Table ' + <%- scriptJson(table.table_name) %> + ' Tab';
             subtitle.textContent = 'Add items or tap to review';
-            viewCartBtn.textContent = 'Review & Order ↗';
+            if (viewCartBtn) viewCartBtn.textContent = 'Review & Order ↗';
           }
         }
       })
       .catch(() => {});
   }
 
-  // Initial cart load on page open
+  // --- 5. FLOOR SERVICE BELL ---
+  document.querySelectorAll('.staff-call-btn').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const origText = button.textContent;
+      const type = button.dataset.type;
+      button.disabled = true;
+      button.textContent = 'Calling server...';
+
+      const feedback = document.getElementById('staff-call-feedback');
+      const message = document.getElementById('staff-call-message');
+      const icon = document.getElementById('call-feedback-icon');
+
+      try {
+        const response = await fetch(`/staff-call/${currentTableId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ type }),
+        });
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          button.textContent = '✓ Server Alerted';
+          if (feedback) {
+            feedback.style.display = 'flex';
+            feedback.style.background = '#ecfdf5';
+            feedback.style.color = '#065f46';
+            feedback.style.border = '1px solid #a7f3d0';
+          }
+          if (icon) icon.textContent = '✓';
+          if (message) message.textContent = data.message || 'Floor staff alerted. Someone will be with you shortly!';
+
+          setTimeout(() => {
+            button.disabled = false;
+            button.textContent = origText;
+          }, 15000);
+        } else {
+          if (feedback) {
+            feedback.style.display = 'flex';
+            feedback.style.background = '#fffbeb';
+            feedback.style.color = '#92400e';
+            feedback.style.border = '1px solid #fde68a';
+          }
+          if (icon) icon.textContent = '⏳';
+          if (message) message.textContent = data.message || 'Server already notified. Help is on the way!';
+          button.textContent = '⏳ Server on way';
+
+          setTimeout(() => {
+            button.disabled = false;
+            button.textContent = origText;
+          }, 8000);
+        }
+      } catch (err) {
+        button.disabled = false;
+        button.textContent = origText;
+      }
+    });
+  });
+
+  // --- 6. EXPLICIT CART MODAL EVENT LISTENERS ---
+  const viewCartBtn = document.getElementById('view-cart-btn');
+  const cartSummaryBar = document.getElementById('cart-summary');
+  const tableCartModal = document.getElementById('table-cart-modal');
+  const closeCartModalBtn = document.getElementById('close-cart-modal-btn');
+
+  if (viewCartBtn) {
+    viewCartBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openCartModal();
+    });
+  }
+
+  if (cartSummaryBar) {
+    cartSummaryBar.addEventListener('click', (e) => {
+      e.preventDefault();
+      openCartModal();
+    });
+  }
+
+  if (closeCartModalBtn) {
+    closeCartModalBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeCartModal();
+    });
+  }
+
+  if (tableCartModal) {
+    tableCartModal.addEventListener('click', (e) => {
+      if (e.target === tableCartModal) {
+        closeCartModal();
+      }
+    });
+  }
+
   refreshCart();
 </script>
-

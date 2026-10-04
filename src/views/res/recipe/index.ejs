@@ -1,0 +1,103 @@
+<%
+const totalDishes = dishes.length;
+const configuredRecipes = dishes.filter(d => d.hasRecipe).length;
+const pendingRecipes = totalDishes - configuredRecipes;
+let totalCostSum = 0;
+let totalPriceSum = 0;
+dishes.filter(d => d.hasRecipe).forEach(d => {
+  totalCostSum += d.totalCost;
+  totalPriceSum += (d.price ? parseFloat(d.price) : 0);
+});
+const avgFoodCostPct = totalPriceSum > 0 ? Math.round((totalCostSum / totalPriceSum) * 100) : 0;
+%>
+
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Kitchen Intelligence & Food Costing</span>
+      <span style="font-size:12px;color:var(--muted);"><%= configuredRecipes %> / <%= totalDishes %> Recipes Configured</span>
+    </div>
+    <h2>Recipe Management & Bill of Materials (BOM)</h2>
+    <p>Map raw inventory ingredients to dishes for automated stock deductions upon sale, food cost percentages, and margin tracking.</p>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <a class="btn btn-secondary" href="/inventory">📦 Inventory Ledger</a>
+    <a class="btn" href="/menus">🍽️ Menu Items</a>
+  </div>
+</div>
+
+<!-- 4 KPI TILES -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-bottom:20px;">
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Configured Recipes</span>
+    <div style="font-size:28px;font-weight:800;color:#16a34a;margin:6px 0 2px;"><%= configuredRecipes %></div>
+    <span style="font-size:12px;color:var(--muted);">Auto-deplete stock on order</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Missing Recipes</span>
+    <div style="font-size:28px;font-weight:800;color:<%= pendingRecipes > 0 ? '#ea580c' : 'var(--ink)' %>;margin:6px 0 2px;"><%= pendingRecipes %></div>
+    <span style="font-size:12px;color:var(--muted);">Dishes without ingredients mapped</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Avg Food Cost %</span>
+    <div style="font-size:28px;font-weight:800;color:var(--brand);margin:6px 0 2px;"><%= avgFoodCostPct %>%</div>
+    <span style="font-size:12px;color:var(--muted);">Target healthy range: 25% – 35%</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Avg Gross Margin</span>
+    <div style="font-size:28px;font-weight:800;color:#0d9488;margin:6px 0 2px;"><%= 100 - avgFoodCostPct %>%</div>
+    <span style="font-size:12px;color:var(--muted);">Contribution margin to profit</span>
+  </div>
+</div>
+
+<!-- RECIPE LIST -->
+<div class="card" style="box-shadow:var(--shadow-sm);border:1px solid var(--line);padding:20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <h3 style="margin:0;font-size:17px;color:var(--ink);">Menu Item Bill of Materials</h3>
+    <span style="font-size:12px;color:var(--muted);"><%= totalDishes %> total menu items</span>
+  </div>
+
+  <div style="display:grid;gap:12px;">
+    <% dishes.forEach(dish => { %>
+      <div class="item-row" style="background:#f8fafc;padding:14px 18px;border-radius:10px;border:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:44px;height:44px;border-radius:10px;background:<%= dish.hasRecipe ? '#ecfdf5' : '#fff7ed' %>;color:<%= dish.hasRecipe ? '#059669' : '#ea580c' %>;display:grid;place-items:center;font-size:20px;font-weight:700;">
+            <%= dish.hasRecipe ? '🧾' : '⚠️' %>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <strong style="font-size:16px;color:var(--ink);"><%= dish.item_name %></strong>
+              <span class="badge" style="font-size:11px;"><%= dish.category ? dish.category.category_name : 'General' %></span>
+              <% if (dish.hasRecipe) { %>
+                <span class="badge" style="background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;font-size:11px;font-weight:700;">
+                  ✓ <%= dish.ingredientCount %> Ingredients
+                </span>
+              <% } else { %>
+                <span class="badge" style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;font-size:11px;font-weight:700;">
+                  No Recipe Set
+                </span>
+              <% } %>
+            </div>
+            <div style="font-size:12.5px;color:var(--muted);margin-top:2px;">
+              Menu Price: <strong>$<%= (dish.price ? parseFloat(dish.price) : 0).toFixed(2) %></strong>
+              <% if (dish.hasRecipe) { %>
+                &middot; Est. Ingredient Cost: <strong style="color:#b91c1c;">$<%= dish.totalCost.toFixed(2) %></strong>
+                &middot; Food Cost: <strong style="color:var(--brand);"><%= dish.foodCostPct %>%</strong>
+                &middot; Margin: <strong style="color:#15803d;"><%= dish.marginPct %>% ($<%= dish.grossMargin.toFixed(2) %>)</strong>
+              <% } %>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <a href="/recipes/<%= dish.id %>/edit" class="btn btn-secondary" style="padding:7px 14px;font-size:13px;font-weight:700;">
+            <%= dish.hasRecipe ? '✏️ Edit Recipe (BOM)' : '+ Build Recipe' %>
+          </a>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+</div>

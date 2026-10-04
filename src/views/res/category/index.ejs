@@ -1,44 +1,620 @@
+<%
+function mediaUrl(path) {
+  if (!path) return '';
+  return path.startsWith('assets/') ? '/' + path : '/uploads/' + path;
+}
+
+const totalCategories = categories.length;
+const totalDishes = categories.reduce((sum, c) => sum + (c.item_count || 0), 0);
+const emptyCategories = categories.filter(c => (c.item_count || 0) === 0).length;
+%>
+
+<!-- HEADER & ACTIONS -->
 <div class="card welcome-card" style="margin-bottom:20px;">
   <div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
       <span class="badge status-available">● Menu Organization</span>
-      <span style="font-size:12px;color:var(--muted);">Courses & Sections</span>
+      <span style="font-size:12px;color:var(--muted);"><%= totalCategories %> Categories Defined</span>
     </div>
     <h2>Menu Categories</h2>
-    <p>Group dishes into intuitive courses (Starters, Mains, Desserts, Beverages) to streamline ordering.</p>
+    <p>Organize courses (Starters, Mains, Drinks, Desserts), control display ordering, and manage associated items.</p>
   </div>
-  <a class="btn" href="/categories/create">+ Add category</a>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <button type="button" class="btn" id="open-add-modal-btn" style="box-shadow:var(--shadow-brand);display:flex;align-items:center;gap:6px;">
+      <span>+</span> Add Category
+    </button>
+  </div>
 </div>
 
+<!-- TOAST NOTIFICATION CONTAINER -->
+<div id="category-toast" style="display:none;position:fixed;top:24px;right:24px;z-index:99999;padding:12px 20px;border-radius:10px;box-shadow:var(--shadow-xl);font-size:13.5px;font-weight:700;display:none;align-items:center;gap:10px;">
+  <span id="toast-icon">✓</span>
+  <span id="toast-text"></span>
+</div>
+
+<!-- KPI SUMMARY TILES -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:20px;">
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Total Categories</span>
+    <div style="font-size:28px;font-weight:800;color:var(--ink);margin:6px 0 2px;"><%= totalCategories %></div>
+    <span style="font-size:12px;color:var(--muted);">Active menu sections</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Assigned Menu Items</span>
+    <div style="font-size:28px;font-weight:800;color:#0d9488;margin:6px 0 2px;"><%= totalDishes %></div>
+    <span style="font-size:12px;color:var(--muted);">Dishes cataloged across categories</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Empty Categories</span>
+    <div style="font-size:28px;font-weight:800;color:var(--ink);margin:6px 0 2px;"><%= emptyCategories %></div>
+    <span style="font-size:12px;color:var(--muted);"><%= emptyCategories > 0 ? (emptyCategories + ' sections without dishes') : 'All categories have dishes' %></span>
+  </div>
+</div>
+
+<!-- SEARCH & FILTER TOOLBAR -->
+<div class="card" style="margin-bottom:20px;padding:14px 20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+    <div style="position:relative;flex:1;min-width:260px;">
+      <input type="text" id="category-search" placeholder="Filter categories by name or description..." style="margin:0;padding:10px 14px 10px 38px;border-radius:8px;border:1px solid var(--line-strong);">
+      <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;">🔍</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button type="button" class="btn btn-secondary cat-filter-btn active-filter" data-filter="all" style="padding:6px 14px;font-size:12.5px;background:var(--brand);color:#fff;border-color:var(--brand);">All (<%= totalCategories %>)</button>
+      <button type="button" class="btn btn-secondary cat-filter-btn" data-filter="with-items" style="padding:6px 14px;font-size:12.5px;">Has Items</button>
+      <button type="button" class="btn btn-secondary cat-filter-btn" data-filter="empty" style="padding:6px 14px;font-size:12.5px;">Empty</button>
+    </div>
+  </div>
+</div>
+
+<!-- CATEGORY REORDERABLE LIST -->
 <% if (!categories.length) { %>
-  <div class="card" style="text-align:center;padding:48px 20px;">
-    <div style="font-size:32px;margin-bottom:8px;">◫</div>
-    <h3 style="margin:0 0 6px;">No categories created</h3>
-    <p style="color:var(--muted);margin:0 0 16px;">Create your first category before adding dishes to the menu.</p>
-    <a class="btn" href="/categories/create">+ Add First Category</a>
+  <div class="card" style="text-align:center;padding:56px 20px;" role="status">
+    <div style="font-size:42px;margin-bottom:12px;">◫</div>
+    <h3 style="margin:0 0 6px;">No categories configured yet</h3>
+    <p style="color:var(--muted);margin:0 0 18px;">Create your first category (such as Starters, Mains, or Drinks) to organize your dining menu.</p>
+    <button type="button" class="btn" onclick="openCreateModal()">+ Create First Category</button>
   </div>
 <% } else { %>
-  <div style="display:grid;gap:12px;">
-    <% categories.forEach(function(cat) { %>
-      <div class="card" style="margin:0;padding:18px 22px;">
-        <div class="item-row">
-          <div>
-            <div style="display:flex;align-items:center;gap:10px;">
-              <strong style="font-size:17px;color:var(--ink);"><%= cat.category_name %></strong>
-              <span class="badge" style="font-size:12px;"><%= cat.item_count %> item<%= cat.item_count === 1 ? '' : 's' %></span>
+  <div id="category-list" style="display:grid;gap:12px;">
+    <% categories.forEach(function(cat, index) { %>
+      <div class="card category-row-card"
+        draggable="true"
+        data-id="<%= cat.id %>"
+        data-order="<%= cat.category_order || (index + 1) %>"
+        data-name="<%= (cat.category_name || '').toLowerCase() %>"
+        data-desc="<%= (cat.category_description || '').toLowerCase() %>"
+        data-count="<%= cat.item_count || 0 %>"
+        data-image="<%= cat.category_image ? mediaUrl(cat.category_image) : '' %>"
+        style="margin:0;padding:16px 20px;border:1px solid var(--line);box-shadow:var(--shadow-xs);transition:transform 0.15s ease, box-shadow 0.15s ease;">
+        
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+          <!-- LEFT: DRAG HANDLE, THUMBNAIL, AND INFO -->
+          <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:240px;">
+            <!-- Drag Handle -->
+            <div class="drag-handle" title="Drag to reorder" style="cursor:grab;color:var(--subtle);padding:6px 4px;font-size:18px;user-select:none;touch-action:none;">
+              ⋮⋮
             </div>
-            <% if (cat.category_description) { %>
-              <div style="font-size:13.5px;color:var(--muted);margin-top:4px;"><%= cat.category_description %></div>
-            <% } %>
+
+            <!-- Position Badge -->
+            <span class="badge order-badge" style="background:#f1f5f9;color:var(--muted);font-size:11px;min-width:24px;text-align:center;">
+              #<%= index + 1 %>
+            </span>
+
+            <!-- Category Thumbnail -->
+            <div style="width:52px;height:52px;border-radius:10px;background:#f8fafc;border:1px solid var(--line);overflow:hidden;flex-shrink:0;display:grid;place-items:center;">
+              <% if (cat.category_image) { %>
+                <img src="<%= mediaUrl(cat.category_image) %>" alt="<%= cat.category_name %>" style="width:100%;height:100%;object-fit:cover;">
+              <% } else { %>
+                <span style="font-size:20px;color:var(--brand);">🍽️</span>
+              <% } %>
+            </div>
+
+            <!-- Category Copy -->
+            <div style="min-width:0;flex:1;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;">
+                <strong class="category-name-text" style="font-size:16px;color:var(--ink);"><%= cat.category_name %></strong>
+                <% if (cat.item_count > 0) { %>
+                  <span class="badge status-available" style="font-size:11px;"><%= cat.item_count %> item<%= cat.item_count === 1 ? '' : 's' %></span>
+                <% } else { %>
+                  <span class="badge" style="background:#ffedd5;color:#9a3412;font-size:11px;">0 items (Empty)</span>
+                <% } %>
+              </div>
+              <div style="font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:550px;">
+                <%= cat.category_description || 'No description provided' %>
+              </div>
+            </div>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;">
-            <a class="btn btn-secondary" href="/categories/<%= cat.id %>/edit" style="padding:6px 14px;font-size:13px;">Edit</a>
-            <form method="POST" action="/categories/<%= cat.id %>/delete" style="display:inline;margin:0;" onsubmit="return confirm('Delete this category?');">
-              <button type="submit" class="btn btn-secondary" style="padding:6px 14px;font-size:13px;color:#be123c;">Delete</button>
-            </form>
+
+          <!-- RIGHT: STEPPER BUTTONS & ACTIONS -->
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <!-- Order Stepper buttons for accessibility & mobile -->
+            <div style="display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-right:6px;">
+              <button type="button" class="stepper-btn move-up-btn" title="Move up" style="border:none;background:#fff;padding:6px 10px;cursor:pointer;color:var(--ink);font-size:11px;border-right:1px solid var(--line);">▲</button>
+              <button type="button" class="stepper-btn move-down-btn" title="Move down" style="border:none;background:#fff;padding:6px 10px;cursor:pointer;color:var(--ink);font-size:11px;">▼</button>
+            </div>
+
+            <!-- View dishes in menu -->
+            <a class="btn btn-secondary" href="/menus?category_id=<%= cat.id %>" style="padding:7px 12px;font-size:12.5px;" title="View all dishes under <%= cat.category_name %>">
+              📋 Dishes (<%= cat.item_count || 0 %>)
+            </a>
+
+            <!-- Quick Edit Modal Trigger -->
+            <button type="button" class="btn btn-secondary edit-cat-btn"
+              data-id="<%= cat.id %>"
+              data-name="<%= cat.category_name %>"
+              data-desc="<%= cat.category_description || '' %>"
+              data-image="<%= cat.category_image ? mediaUrl(cat.category_image) : '' %>"
+              style="padding:7px 12px;font-size:12.5px;">
+              ✏️ Edit
+            </button>
+
+            <!-- Delete Trigger -->
+            <button type="button" class="btn btn-secondary delete-cat-btn"
+              data-id="<%= cat.id %>"
+              data-name="<%= cat.category_name %>"
+              data-count="<%= cat.item_count || 0 %>"
+              style="padding:7px 12px;font-size:12.5px;color:#be123c;border-color:#fecdd3;background:#fff1f2;">
+              🗑️
+            </button>
           </div>
         </div>
       </div>
     <% }) %>
   </div>
 <% } %>
+
+<!-- MODAL: ADD / EDIT CATEGORY -->
+<div id="category-modal" class="modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="modal-headline">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <span class="badge status-available" style="margin-bottom:4px;display:inline-block;">● Category Editor</span>
+        <h3 id="modal-headline" style="margin:0;font-size:18px;color:var(--ink);">Add Category</h3>
+      </div>
+      <button type="button" class="modal-close" id="close-modal-btn" aria-label="Close modal">&times;</button>
+    </div>
+
+    <form id="category-modal-form" enctype="multipart/form-data">
+      <input type="hidden" name="id" id="cat-id-input">
+
+      <div class="modal-body">
+        <div>
+          <label for="cat-name-input">Category Name *</label>
+          <input type="text" id="cat-name-input" name="category_name" required placeholder="e.g. Appetizers, Main Courses, Cocktails">
+        </div>
+
+        <div>
+          <label for="cat-desc-input">Description (Optional)</label>
+          <textarea id="cat-desc-input" name="description" rows="3" placeholder="Briefly describe what dishes belong to this course..."></textarea>
+        </div>
+
+        <div>
+          <label for="cat-image-input">Category Image (Optional)</label>
+          <input type="file" id="cat-image-input" name="category_image" accept="image/*">
+          
+          <!-- Live Preview Box -->
+          <div id="image-preview-wrapper" style="display:none;margin-top:8px;align-items:center;gap:12px;background:#f8fafc;padding:10px;border-radius:8px;border:1px solid var(--line);">
+            <img id="image-preview-thumb" src="" alt="Category preview" style="width:48px;height:48px;border-radius:6px;object-fit:cover;border:1px solid var(--line);">
+            <span style="font-size:12px;color:var(--muted);" id="image-preview-label">Selected image</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancel-modal-btn">Cancel</button>
+        <button type="submit" class="btn" id="save-modal-btn" style="box-shadow:var(--shadow-brand);">Save Category</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  /* Dragging styling */
+  .category-row-card.dragging {
+    opacity: 0.45;
+    transform: scale(0.99);
+    border-color: var(--brand) !important;
+  }
+  .category-row-card.drag-over {
+    border-top: 3px solid var(--brand) !important;
+  }
+
+  /* Stepper styling */
+  .stepper-btn:hover {
+    background: var(--surface-subtle) !important;
+    color: var(--brand) !important;
+  }
+
+  /* Modal Layout */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 16px;
+    animation: modalFadeIn 0.15s ease-out;
+  }
+  @keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .modal-box {
+    background: #ffffff;
+    width: 100%;
+    max-width: 520px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--line);
+    background: #fafaf9;
+  }
+  .modal-close {
+    background: transparent;
+    border: none;
+    font-size: 26px;
+    color: var(--muted);
+    cursor: pointer;
+    line-height: 1;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-close:hover {
+    background: #f1f5f9;
+    color: var(--ink);
+  }
+  .modal-body {
+    padding: 20px 24px;
+    display: grid;
+    gap: 14px;
+  }
+  .modal-footer {
+    padding: 16px 24px;
+    background: #fafaf9;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+</style>
+
+<script>
+  (function() {
+    const list = document.getElementById('category-list');
+    const modal = document.getElementById('category-modal');
+    const modalForm = document.getElementById('category-modal-form');
+    const modalHeadline = document.getElementById('modal-headline');
+    const catIdInput = document.getElementById('cat-id-input');
+    const catNameInput = document.getElementById('cat-name-input');
+    const catDescInput = document.getElementById('cat-desc-input');
+    const catImageInput = document.getElementById('cat-image-input');
+    const imgPreviewWrapper = document.getElementById('image-preview-wrapper');
+    const imgPreviewThumb = document.getElementById('image-preview-thumb');
+    const imgPreviewLabel = document.getElementById('image-preview-label');
+    const openAddBtn = document.getElementById('open-add-modal-btn');
+    const closeBtn = document.getElementById('close-modal-btn');
+    const cancelBtn = document.getElementById('cancel-modal-btn');
+    const saveBtn = document.getElementById('save-modal-btn');
+    const toast = document.getElementById('category-toast');
+    const toastText = document.getElementById('toast-text');
+    const toastIcon = document.getElementById('toast-icon');
+
+    // Toast helper
+    function showToast(message, isError = false) {
+      toastText.textContent = message;
+      toastIcon.textContent = isError ? '⚠️' : '✓';
+      toast.style.background = isError ? '#fef2f2' : '#ecfdf5';
+      toast.style.color = isError ? '#991b1b' : '#065f46';
+      toast.style.border = isError ? '1px solid #fecaca' : '1px solid #a7f3d0';
+      toast.style.display = 'flex';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3500);
+    }
+
+    // Modal helpers
+    window.openCreateModal = function() {
+      modalHeadline.textContent = 'Add New Category';
+      catIdInput.value = '';
+      catNameInput.value = '';
+      catDescInput.value = '';
+      catImageInput.value = '';
+      imgPreviewWrapper.style.display = 'none';
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => catNameInput.focus(), 50);
+    };
+
+    function openEditModal(btn) {
+      modalHeadline.textContent = 'Edit Category';
+      catIdInput.value = btn.dataset.id;
+      catNameInput.value = btn.dataset.name;
+      catDescInput.value = btn.dataset.desc;
+      catImageInput.value = '';
+
+      if (btn.dataset.image) {
+        imgPreviewThumb.src = btn.dataset.image;
+        imgPreviewLabel.textContent = 'Current image';
+        imgPreviewWrapper.style.display = 'flex';
+      } else {
+        imgPreviewWrapper.style.display = 'none';
+      }
+
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => catNameInput.focus(), 50);
+    }
+
+    function closeModal() {
+      modal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    if (openAddBtn) openAddBtn.addEventListener('click', openCreateModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    // Live file image preview
+    catImageInput.addEventListener('change', function() {
+      const file = this.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          imgPreviewThumb.src = e.target.result;
+          imgPreviewLabel.textContent = 'New upload: ' + file.name;
+          imgPreviewWrapper.style.display = 'flex';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Edit button clicks
+    document.querySelectorAll('.edit-cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => openEditModal(btn));
+    });
+
+    // AJAX Form Submission
+    modalForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+
+      const formData = new FormData(modalForm);
+
+      try {
+        const response = await fetch('/categories', {
+          method: 'POST',
+          headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+          body: formData,
+        });
+
+        if (response.ok) {
+          closeModal();
+          showToast('Category saved successfully!');
+          setTimeout(() => location.reload(), 600);
+        } else {
+          const err = await response.json();
+          alert(err.message || 'Could not save category.');
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Category';
+        }
+      } catch (err) {
+        // Fallback to standard form post
+        modalForm.method = 'POST';
+        modalForm.action = '/categories';
+        modalForm.submit();
+      }
+    });
+
+    // Delete confirmation with safety check
+    document.querySelectorAll('.delete-cat-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const count = parseInt(btn.dataset.count, 10);
+        const name = btn.dataset.name;
+
+        if (count > 0) {
+          alert(`Cannot delete "${name}" because it still has ${count} menu item(s). Please move or delete its items first.`);
+          return;
+        }
+
+        if (!confirm(`Are you sure you want to delete category "${name}"?`)) {
+          return;
+        }
+
+        try {
+          const res = await fetch(`/categories/${btn.dataset.id}/delete`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            showToast(`Deleted category "${name}"`);
+            const card = btn.closest('.category-row-card');
+            if (card) {
+              card.style.opacity = '0';
+              setTimeout(() => {
+                card.remove();
+                updateOrderNumbers();
+              }, 250);
+            }
+          } else {
+            alert(data.message || 'Failed to delete category.');
+          }
+        } catch (err) {
+          // Fallback form post
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = `/categories/${btn.dataset.id}/delete`;
+          document.body.appendChild(form);
+          form.submit();
+        }
+      });
+    });
+
+    // Reordering persistence
+    function updateOrderNumbers() {
+      const cards = document.querySelectorAll('.category-row-card');
+      const orderPayload = [];
+
+      cards.forEach((card, index) => {
+        const badge = card.querySelector('.order-badge');
+        if (badge) badge.textContent = '#' + (index + 1);
+        card.dataset.order = index + 1;
+        orderPayload.push({ id: parseInt(card.dataset.id, 10), order: index + 1 });
+      });
+
+      fetch('/category/update-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_ids: orderPayload }),
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success) {
+          showToast('Menu order updated!');
+        }
+      })
+      .catch(() => {});
+    }
+
+    // Up / Down Stepper Buttons
+    document.querySelectorAll('.move-up-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.category-row-card');
+        const prev = card.previousElementSibling;
+        if (prev && prev.classList.contains('category-row-card')) {
+          card.parentNode.insertBefore(card, prev);
+          updateOrderNumbers();
+        }
+      });
+    });
+
+    document.querySelectorAll('.move-down-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.category-row-card');
+        const next = card.nextElementSibling;
+        if (next && next.classList.contains('category-row-card')) {
+          card.parentNode.insertBefore(next, card);
+          updateOrderNumbers();
+        }
+      });
+    });
+
+    // HTML5 Drag and Drop Reordering
+    let draggedCard = null;
+
+    if (list) {
+      list.querySelectorAll('.category-row-card').forEach(card => {
+        card.addEventListener('dragstart', (e) => {
+          draggedCard = card;
+          card.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+
+        card.addEventListener('dragend', () => {
+          card.classList.remove('dragging');
+          list.querySelectorAll('.category-row-card').forEach(c => c.classList.remove('drag-over'));
+          updateOrderNumbers();
+        });
+
+        card.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          const target = e.target.closest('.category-row-card');
+          if (target && target !== draggedCard) {
+            target.classList.add('drag-over');
+          }
+        });
+
+        card.addEventListener('dragleave', (e) => {
+          const target = e.target.closest('.category-row-card');
+          if (target) target.classList.remove('drag-over');
+        });
+
+        card.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const target = e.target.closest('.category-row-card');
+          if (target && target !== draggedCard) {
+            target.classList.remove('drag-over');
+            const allCards = Array.from(list.querySelectorAll('.category-row-card'));
+            const fromIdx = allCards.indexOf(draggedCard);
+            const toIdx = allCards.indexOf(target);
+
+            if (fromIdx < toIdx) {
+              list.insertBefore(draggedCard, target.nextSibling);
+            } else {
+              list.insertBefore(draggedCard, target);
+            }
+          }
+        });
+      });
+    }
+
+    // Live Search & Filter
+    const searchInput = document.getElementById('category-search');
+    const filterBtns = document.querySelectorAll('.cat-filter-btn');
+    let currentFilter = 'all';
+
+    function filterCards() {
+      const q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+      document.querySelectorAll('.category-row-card').forEach(card => {
+        const name = card.dataset.name || '';
+        const desc = card.dataset.desc || '';
+        const count = parseInt(card.dataset.count, 10);
+
+        const matchesSearch = !q || name.includes(q) || desc.includes(q);
+        let matchesFilter = true;
+
+        if (currentFilter === 'with-items') {
+          matchesFilter = count > 0;
+        } else if (currentFilter === 'empty') {
+          matchesFilter = count === 0;
+        }
+
+        card.style.display = (matchesSearch && matchesFilter) ? 'block' : 'none';
+      });
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('input', filterCards);
+    }
+
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => {
+          b.style.background = '#fff';
+          b.style.color = 'var(--ink-secondary)';
+          b.style.borderColor = 'var(--line)';
+        });
+        btn.style.background = 'var(--brand)';
+        btn.style.color = '#fff';
+        btn.style.borderColor = 'var(--brand)';
+
+        currentFilter = btn.dataset.filter;
+        filterCards();
+      });
+    });
+
+  })();
+</script>

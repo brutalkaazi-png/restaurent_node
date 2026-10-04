@@ -1,107 +1,328 @@
-<div class="card welcome-card">
-  <div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-      <span class="badge status-available" style="font-size:11px;">● Service Active</span>
-      <span style="font-size:12px;color:var(--muted);"><%= currentUser.slug ? '/' + currentUser.slug : '' %></span>
+<%
+const user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : (locals.currentUser || {});
+const userName = user.name || 'Owner';
+const restSlug = user.slug || 'demo-restaurant';
+const safeStats = (typeof stats !== 'undefined' && stats) ? stats : {};
+const salesVal = safeStats.sales || 0;
+const aovVal = safeStats.averageTicket || 0;
+const totalTables = safeStats.totalTables || 0;
+const activeTables = safeStats.activeTables || 0;
+const openTables = Math.max(0, totalTables - activeTables);
+const occupancyPct = totalTables > 0 ? Math.round((activeTables / totalTables) * 100) : 0;
+const ordersList = (typeof recentOrders !== 'undefined' && recentOrders) ? recentOrders : [];
+%>
+
+<!-- HERO BANNER -->
+<div class="card welcome-card" style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;">
+  <div style="flex:1;min-width:300px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available" style="font-size:11px;font-weight:700;">● Live Operations</span>
+      <span style="font-size:12px;color:var(--muted);"><%= userName %></span>
     </div>
-    <h2>Good to see you, <%= currentUser.name %>.</h2>
-    <p>Everything you need to monitor sales, floor status, and kitchen throughput today.</p>
+    <h2 style="margin:0 0 6px;font-size:24px;letter-spacing:-0.02em;">Welcome back, <%= userName %>!</h2>
+    <p style="margin:0;color:var(--muted);font-size:13.5px;max-width:640px;line-height:1.5;">Here is your live floor activity, kitchen queue, and revenue overview for today's dining service.</p>
   </div>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;">
-    <% if (currentUser.slug) { %>
-      <a class="btn btn-secondary" href="/<%= currentUser.slug %>/menu" target="_blank" rel="noopener">Preview Menu ↗</a>
+  <div style="display:inline-flex;align-items:center;gap:12px;flex-shrink:0;">
+    <a class="btn btn-secondary" href="/<%= restSlug %>/menu" target="_blank" rel="noopener" style="margin:0;height:42px;padding:0 16px;display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;white-space:nowrap;">
+      <span>📱</span> Preview Online Store ↗
+    </a>
+    <a class="btn" href="/<%= restSlug %>/menu/demo-table-1" target="_blank" rel="noopener" style="margin:0;height:42px;padding:0 20px;display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;box-shadow:var(--shadow-brand);white-space:nowrap;">
+      <span>▦</span> Test Table QR Menu ↗
+    </a>
+  </div>
+</div>
+
+<!-- 5 REAL-TIME KPI TILES -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-bottom:24px;">
+  <!-- Gross Revenue -->
+  <div class="card" style="margin:0;border:1px solid var(--line);box-shadow:var(--shadow-xs);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Gross Revenue</span>
+      <span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:6px;background:#ecfdf5;color:#059669;font-weight:800;font-size:14px;">$</span>
+    </div>
+    <div style="font-size:28px;font-weight:800;color:var(--brand);margin-bottom:2px;">$<%= salesVal.toFixed(2) %></div>
+    <span style="font-size:12px;color:var(--muted);"><%= safeStats.completedOrders || 0 %> settled orders</span>
+  </div>
+
+  <!-- Average Order Value (AOV) -->
+  <div class="card" style="margin:0;border:1px solid var(--line);box-shadow:var(--shadow-xs);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Avg Check (AOV)</span>
+      <span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:6px;background:#eff6ff;color:#2563eb;font-weight:800;font-size:14px;">◷</span>
+    </div>
+    <div style="font-size:28px;font-weight:800;color:var(--ink);margin-bottom:2px;">$<%= aovVal.toFixed(2) %></div>
+    <span style="font-size:12px;color:var(--muted);">Per customer dining tab</span>
+  </div>
+
+  <!-- Active Dining Floor Tables -->
+  <div class="card" style="margin:0;border:1px solid var(--line);box-shadow:var(--shadow-xs);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Floor Occupancy</span>
+      <span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:6px;background:#fef3c7;color:#b45309;font-weight:800;font-size:14px;">▦</span>
+    </div>
+    <div style="font-size:28px;font-weight:800;color:var(--ink);margin-bottom:2px;">
+      <%= activeTables %> <span style="font-size:14px;color:var(--muted);font-weight:500;">/ <%= totalTables %> tables</span>
+    </div>
+    <span style="font-size:12px;color:var(--muted);"><%= occupancyPct %>% floor occupancy (<%= openTables %> free)</span>
+  </div>
+
+  <!-- Orders In Prep -->
+  <div class="card" style="margin:0;border:1px solid var(--line);box-shadow:var(--shadow-xs);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Orders In Prep</span>
+      <span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:6px;background:#fee2e2;color:#be123c;font-weight:800;font-size:14px;">♨</span>
+    </div>
+    <div style="font-size:28px;font-weight:800;color:var(--ink);margin-bottom:2px;">
+      <%= (safeStats.kitchenQueue || 0) + (safeStats.barQueue || 0) %>
+    </div>
+    <span style="font-size:12px;color:var(--muted);"><%= safeStats.kitchenQueue || 0 %> Kitchen &middot; <%= safeStats.barQueue || 0 %> Bar</span>
+  </div>
+
+  <!-- Staff Calls -->
+  <div class="card" style="margin:0;border:1px solid var(--line);box-shadow:var(--shadow-xs);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Staff Calls</span>
+      <span style="display:inline-grid;place-items:center;width:28px;height:28px;border-radius:6px;background:#fef3c7;color:#b45309;font-weight:800;font-size:14px;">🔔</span>
+    </div>
+    <div style="font-size:28px;font-weight:800;color:var(--ink);margin-bottom:2px;">
+      <%= safeStats.pendingStaffCalls || 0 %>
+    </div>
+    <span style="font-size:12px;color:var(--muted);">
+      <%= (safeStats.pendingStaffCalls || 0) > 0 ? 'Pending table calls' : 'All tables attended' %>
+    </span>
+  </div>
+</div>
+
+<!-- TWO-COLUMN WORKSPACE: LEFT (RECENT ACTIVITY) & RIGHT (CHANNELS) -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:20px;margin-bottom:28px;align-items:start;">
+  <!-- RECENT ORDERS FEED -->
+  <div class="card" style="margin:0;border:1px solid var(--line);box-shadow:var(--shadow-xs);">
+    <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:14px;">
+      <div>
+        <h3 style="margin:0;font-size:16px;color:var(--ink);">Recent Order Activity</h3>
+        <span style="font-size:12px;color:var(--muted);">Live dining and checkout logs</span>
+      </div>
+      <a href="/order-summary" class="btn btn-secondary btn-sm" style="font-size:12px;padding:4px 10px;">View Reports ↗</a>
+    </div>
+
+    <% if (!ordersList.length) { %>
+      <div style="text-align:center;padding:32px 0;color:var(--muted);">
+        <p style="margin:0;">No orders recorded yet today.</p>
+      </div>
+    <% } else { %>
+      <div style="display:grid;gap:10px;">
+        <% ordersList.forEach(order => { 
+          const isDone = order.order_status === 'completed' || order.order_status === 'approved';
+        %>
+          <div class="item-row" style="padding:10px 14px;background:#f8fafc;border-radius:8px;border:1px solid var(--line);margin:0;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="display:inline-grid;place-items:center;width:32px;height:32px;border-radius:6px;background:<%= order.qr_type && order.qr_type.includes('Table') ? '#fef3c7' : '#ecfdf5' %>;color:<%= order.qr_type && order.qr_type.includes('Table') ? '#b45309' : '#047857' %>;font-size:13px;font-weight:700;">
+                <%= order.qr_type && order.qr_type.includes('Table') ? '▦' : '🛍️' %>
+              </span>
+              <div>
+                <strong style="color:var(--ink);font-size:14px;">Order #<%= order.id %> &middot; <%= order.name || 'Dine-In Guest' %></strong>
+                <div style="font-size:12px;color:var(--muted);margin-top:1px;">
+                  <%= order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '' %>
+                  &middot; <span style="text-transform:capitalize;"><%= order.payment_mode || 'Cash' %></span>
+                </div>
+              </div>
+            </div>
+
+            <div style="text-align:right;">
+              <strong style="display:block;font-size:15px;color:var(--ink);">$<%= parseFloat(order.total_cost || 0).toFixed(2) %></strong>
+              <span class="badge <%= isDone ? 'status-available' : 'status-occupied' %>" style="font-size:10px;padding:2px 6px;text-transform:capitalize;">
+                <%= (order.order_status || 'pending').replaceAll('_', ' ') %>
+              </span>
+            </div>
+          </div>
+        <% }) %>
+      </div>
     <% } %>
-    <a class="btn" href="/menus/create">+ Add menu item</a>
+  </div>
+
+  <!-- ORDER CHANNELS & CATALOG QUICK HEALTH -->
+  <div class="card" style="margin:0;border:1px solid var(--line);box-shadow:var(--shadow-xs);">
+    <div style="border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:14px;">
+      <h3 style="margin:0;font-size:16px;color:var(--ink);">Sales Channel Distribution</h3>
+      <span style="font-size:12px;color:var(--muted);">Dine-in QR tables versus Online / Takeaway</span>
+    </div>
+
+    <!-- Table QR Channel -->
+    <div style="background:#f8fafc;padding:14px 16px;border-radius:10px;border:1px solid var(--line);margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:#fef3c7;color:#b45309;font-weight:700;font-size:13px;">▦</span>
+          <strong style="font-size:14.5px;color:var(--ink);">Dine-In Table Orders</strong>
+        </div>
+        <span class="badge" style="background:#e0e7ff;color:#3730a3;font-weight:700;"><%= safeStats.tableOrdersCount || 0 %> orders</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);">
+        <span>Generated revenue:</span>
+        <strong style="color:var(--ink);font-size:14px;">$<%= (safeStats.tableSales || 0).toFixed(2) %></strong>
+      </div>
+    </div>
+
+    <!-- Online Store Channel -->
+    <div style="background:#f8fafc;padding:14px 16px;border-radius:10px;border:1px solid var(--line);margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;background:#ecfdf5;color:#047857;font-weight:700;font-size:13px;">🛍️</span>
+          <strong style="font-size:14.5px;color:var(--ink);">Online & Takeaway Orders</strong>
+        </div>
+        <span class="badge" style="background:#dcfce7;color:#15803d;font-weight:700;"><%= safeStats.onlineOrdersCount || 0 %> orders</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);">
+        <span>Generated revenue:</span>
+        <strong style="color:var(--ink);font-size:14px;">$<%= (safeStats.onlineSales || 0).toFixed(2) %></strong>
+      </div>
+    </div>
+
+    <!-- Menu Health Summary -->
+    <div style="border-top:1px dashed var(--line);padding-top:12px;display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+      <span style="color:var(--muted);">Catalog Availability:</span>
+      <div>
+        <span class="badge status-available" style="font-size:11px;"><%= Math.max(0, (safeStats.menuCount || 0) - (safeStats.soldOutCount || 0)) %> Available</span>
+        <% if ((safeStats.soldOutCount || 0) > 0) { %>
+          <span class="badge status-sold-out" style="font-size:11px;margin-left:4px;"><%= safeStats.soldOutCount %> 86'd</span>
+        <% } %>
+      </div>
+    </div>
   </div>
 </div>
 
-<div style="margin:24px 0 12px;display:flex;align-items:center;justify-content:space-between;">
-  <h3 style="margin:0;font-size:16px;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);">Service Metrics</h3>
-  <span style="font-size:12px;color:var(--subtle);">Live updates</span>
+<!-- OPERATIONS LAUNCHPAD -->
+<div style="margin:24px 0 14px;display:flex;align-items:center;justify-content:space-between;">
+  <h3 style="margin:0;font-size:16px;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);">Operational Hubs</h3>
+  <span style="font-size:12px;color:var(--subtle);">Direct workspace shortcuts</span>
 </div>
 
-<section class="quick-grid" aria-label="Restaurant summary">
-  <div class="quick-link">
-    <span class="quick-icon" style="background:#ecfdf5;color:#059669;">$</span>
-    <strong style="font-size:22px;color:var(--ink);">$<%= stats.sales.toFixed(2) %></strong>
-    <span><%= stats.completedOrders %> completed order<%= stats.completedOrders === 1 ? '' : 's' %></span>
-  </div>
-  <div class="quick-link">
-    <span class="quick-icon" style="background:#eff6ff;color:#2563eb;">◷</span>
-    <strong style="font-size:22px;color:var(--ink);">$<%= stats.averageTicket.toFixed(2) %></strong>
-    <span>Average ticket size</span>
-  </div>
-  <div class="quick-link">
-    <span class="quick-icon" style="background:#fef3c7;color:#d97706;">▦</span>
-    <strong style="font-size:22px;color:var(--ink);"><%= stats.activeTables %></strong>
-    <span>Active table<%= stats.activeTables === 1 ? '' : 's' %> on floor</span>
-  </div>
-  <div class="quick-link">
-    <span class="quick-icon" style="background:#f1f5f9;color:#475569;">☷</span>
-    <strong style="font-size:22px;color:var(--ink);"><%= stats.menuCount %></strong>
-    <span><%= stats.soldOutCount > 0 ? stats.soldOutCount + ' sold out' : 'All available' %></span>
-  </div>
-  <div class="quick-link">
-    <span class="quick-icon" style="background:#fff1f2;color:#e11d48;">♨</span>
-    <strong style="font-size:22px;color:var(--ink);"><%= stats.kitchenQueue %></strong>
-    <span>Orders in prep queue</span>
-  </div>
-</section>
-
-<div style="margin:28px 0 12px;">
-  <h3 style="margin:0;font-size:16px;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);">Operations & Workspaces</h3>
-</div>
-
-<section class="quick-grid" aria-label="Quick actions">
-  <a class="quick-link" href="/counter-admin/<%= currentUser.slug %>/counter">
-    <span class="quick-icon" style="background:var(--brand-soft);color:var(--brand);">▣</span>
-    <strong>Counter & Billing</strong>
-    <span>Live floor plan, guest tabs, and checkout.</span>
+<section class="quick-grid" aria-label="Operations grid">
+  <!-- POS Counter -->
+  <a class="quick-link" href="/counter-admin/<%= restSlug %>/counter">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <span class="quick-icon" style="background:var(--brand-soft);color:var(--brand);margin:0;">▣</span>
+      <% if (activeTables > 0) { %>
+        <span class="badge status-occupied" style="font-size:10px;"><%= activeTables %> Active</span>
+      <% } %>
+    </div>
+    <strong>Counter & Cashier POS</strong>
+    <span>Live floor plan, guest tabs, bills, and checkouts.</span>
   </a>
+
+  <!-- Kitchen KDS -->
   <a class="quick-link" href="/kitchen-admin/kitchen">
-    <span class="quick-icon" style="background:#fff1f2;color:#e11d48;">♨</span>
-    <strong>Kitchen KDS</strong>
-    <span>Active cook tickets, timers, and fulfillment.</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <span class="quick-icon" style="background:#fff1f2;color:#e11d48;margin:0;">♨</span>
+      <% if ((safeStats.kitchenQueue || 0) > 0) { %>
+        <span class="badge status-sold-out" style="font-size:10px;"><%= safeStats.kitchenQueue %> Tickets</span>
+      <% } %>
+    </div>
+    <strong>Kitchen KDS Board</strong>
+    <span>Cook timers, ticket dispatch, and station routing.</span>
   </a>
-  <a class="quick-link" href="/menus">
-    <span class="quick-icon" style="background:#f1f5f9;color:#334155;">☷</span>
-    <strong>Menu & Dishes</strong>
-    <span>Manage items, variants, and 86 sold-out items.</span>
+
+  <!-- Bar Station -->
+  <a class="quick-link" href="/kitchen-admin/bar">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <span class="quick-icon" style="background:#eff6ff;color:#2563eb;margin:0;">🍸</span>
+      <% if ((safeStats.barQueue || 0) > 0) { %>
+        <span class="badge" style="background:#dbeafe;color:#1e40af;font-size:10px;"><%= safeStats.barQueue %> Drinks</span>
+      <% } %>
+    </div>
+    <strong>Bar & Drinks Station</strong>
+    <span>Cocktail orders, beverages, and drink tickets.</span>
   </a>
-  <a class="quick-link" href="/categories">
-    <span class="quick-icon" style="background:#f1f5f9;color:#334155;">◫</span>
-    <strong>Categories</strong>
-    <span>Organize menu courses and displays.</span>
-  </a>
+
+  <!-- Tables & QR -->
   <a class="quick-link" href="/tables">
-    <span class="quick-icon" style="background:#f1f5f9;color:#334155;">▦</span>
-    <strong>Table Setup</strong>
-    <span>QR codes, table names, and seating zones.</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <span class="quick-icon" style="background:#f8fafc;color:#334155;border:1px solid var(--line);margin:0;">▦</span>
+      <span class="badge" style="font-size:10px;"><%= totalTables %> Tables</span>
+    </div>
+    <strong>Table Setup & QR Placards</strong>
+    <span>Print QR table stands and manage dining room floor.</span>
   </a>
+
+  <!-- Menu Catalog -->
+  <a class="quick-link" href="/menus">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <span class="quick-icon" style="background:#f8fafc;color:#334155;border:1px solid var(--line);margin:0;">☷</span>
+      <span class="badge" style="font-size:10px;"><%= safeStats.menuCount || 0 %> Dishes</span>
+    </div>
+    <strong>Menu Items & Recipes</strong>
+    <span>Pricing, size variants, toppings, and 86 toggles.</span>
+  </a>
+
+  <!-- Categories -->
+  <a class="quick-link" href="/categories">
+    <span class="quick-icon" style="background:#f8fafc;color:#334155;border:1px solid var(--line);">◫</span>
+    <strong>Courses & Categories</strong>
+    <span>Organize appetizers, mains, and beverage sections.</span>
+  </a>
+
+  <!-- Staff Calls -->
   <a class="quick-link" href="/staff-calls">
-    <span class="quick-icon" style="background:#ecfdf5;color:#059669;">♧</span>
-    <strong>Staff Calls</strong>
-    <span>Live guest calls for service, water, or bill.</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <span class="quick-icon" style="background:#ecfdf5;color:#059669;margin:0;">♧</span>
+      <% if ((safeStats.pendingStaffCalls || 0) > 0) { %>
+        <span class="badge status-occupied" style="font-size:10px;"><%= safeStats.pendingStaffCalls %> Pending</span>
+      <% } %>
+    </div>
+    <strong>Guest Staff Calls</strong>
+    <span>Live table service, water refills, and check requests.</span>
   </a>
-  <a class="quick-link" href="/inventory">
-    <span class="quick-icon" style="background:#eff6ff;color:#2563eb;">◈</span>
-    <strong>Inventory</strong>
-    <span>Stock levels, ingredients, and replenishment.</span>
+
+  <!-- Team Management -->
+  <a class="quick-link" href="/waiters">
+    <span class="quick-icon" style="background:#f8fafc;color:#334155;border:1px solid var(--line);">♙</span>
+    <strong>Team & Staff Accounts</strong>
+    <span>Assign logins for floor waiters, chefs, and cashiers.</span>
   </a>
-  <a class="quick-link" href="/order-summary">
-    <span class="quick-icon" style="background:#fef3c7;color:#d97706;">▤</span>
-    <strong>Sales Reports</strong>
-    <span>Daily, monthly, and dine-in vs online metrics.</span>
-  </a>
+
+  <!-- Reservations -->
   <a class="quick-link" href="/reservations">
     <span class="quick-icon" style="background:#fdf2f8;color:#be185d;">📅</span>
-    <strong>Reservations</strong>
-    <span>Bookings, party sizes, and table seating.</span>
+    <strong>Reservations & Bookings</strong>
+    <span>Guest party bookings, calendar, and table allocations.</span>
   </a>
+
+  <!-- Inventory -->
+  <a class="quick-link" href="/inventory">
+    <span class="quick-icon" style="background:#eff6ff;color:#2563eb;">◈</span>
+    <strong>Inventory & Stock Ledger</strong>
+    <span>Track raw ingredients, stock-ins, and kitchen deductions.</span>
+  </a>
+
+  <!-- Sales Reports -->
+  <a class="quick-link" href="/order-summary">
+    <span class="quick-icon" style="background:#fef3c7;color:#d97706;">▤</span>
+    <strong>Sales & Daily Z-Reports</strong>
+    <span>Financial audits, revenue metrics, and cash drawer balancing.</span>
+  </a>
+
+  <!-- Guest CRM -->
   <a class="quick-link" href="/customers">
-    <span class="quick-icon" style="background:#f1f5f9;color:#334155;">♙</span>
-    <strong>Customers</strong>
-    <span>Guest profiles, order history, and preferences.</span>
+    <span class="quick-icon" style="background:#f8fafc;color:#334155;border:1px solid var(--line);">👥</span>
+    <strong>Customer Directory & LTV</strong>
+    <span>Diner profiles, visit frequency, and spend metrics.</span>
   </a>
 </section>
 
+<!-- REAL-TIME SOCKET LISTENER -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  (function() {
+    try {
+      const socket = io();
+      const currentUserId = <%= user.id || 0 %>;
+      if (currentUserId) {
+        socket.emit('join-restaurant', currentUserId);
+        socket.on('restaurant-update', (event) => {
+          if (['order', 'order-completed', 'staff-call', 'staff-call-updated', 'menu-update', 'table-reset'].includes(event.reason)) {
+            location.reload();
+          }
+        });
+      }
+    } catch(e) {}
+  })();
+</script>

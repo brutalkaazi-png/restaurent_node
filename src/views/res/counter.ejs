@@ -1,99 +1,568 @@
-<div class="card welcome-card" style="margin-bottom:20px;">
+<%
+const totalTables = tables.length;
+const availableCount = tables.filter(t => t.status === 'available').length;
+const occupiedCount = tables.filter(t => ['occupied', 'ordered', 'preparing', 'served'].includes(t.status)).length;
+const billingCount = tables.filter(t => ['billing', 'bill_requested', 'pending_approval'].includes(t.status)).length;
+%>
+
+<!-- HERO HEADER & METRICS BAR -->
+<div class="card welcome-card" style="margin-bottom:16px;">
   <div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-      <span class="badge status-available">● Counter & POS Terminal</span>
+      <span class="badge status-available">● Real-time POS Terminal</span>
       <span style="font-size:12px;color:var(--muted);"><%= restaurant.name %></span>
     </div>
-    <h2>Live Floor & Billing</h2>
-    <p>Select any active dining table to review orders, print guest check, or process settlement.</p>
+    <h2 style="margin:0 0 4px;font-size:24px;">Floor Plan & Cashier Counter</h2>
+    <p style="margin:0;color:var(--muted);font-size:13.5px;">Monitor table turns, fulfill items, settle bills, and approve incoming orders.</p>
   </div>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;">
-    <a class="btn btn-secondary" href="/kitchen-admin/kitchen" target="_blank">Open KDS ↗</a>
-    <a class="btn btn-secondary" href="/staff-calls">Staff Calls</a>
+  
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <!-- ONLINE ORDERS DRAWER BUTTON -->
+    <button type="button" id="btn-toggle-online" class="btn btn-secondary" style="position:relative;display:inline-flex;align-items:center;gap:8px;font-weight:700;">
+      <span>🛍️ Online Orders</span>
+      <span id="online-order-badge" class="badge" style="background:#ea580c;color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;display:none;">0</span>
+    </button>
+
+    <!-- AUDIO CHIME TOGGLE -->
+    <button type="button" id="btn-toggle-sound" class="btn btn-secondary" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;">
+      <span id="sound-icon">🔔</span> <span id="sound-label">Sound: ON</span>
+    </button>
+
+    <a class="btn btn-secondary" href="/kitchen-admin/kitchen" target="_blank" rel="noopener">Kitchen KDS ↗</a>
   </div>
 </div>
 
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-  <h3 style="margin:0;font-size:16px;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);">Dining Tables (<%= tables.length %>)</h3>
-  <span style="font-size:12px;color:var(--subtle);">Real-time socket synchronized</span>
+<!-- LIVE KPI METRIC STRIP -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px;">
+  <div class="card" style="margin:0;padding:14px 18px;border:1px solid var(--line);">
+    <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Configured Tables</span>
+    <div style="font-size:24px;font-weight:800;color:var(--ink);margin:4px 0 2px;"><%= totalTables %></div>
+    <span style="font-size:11.5px;color:var(--muted);">Total dining spots</span>
+  </div>
+  <div class="card" style="margin:0;padding:14px 18px;border:1px solid var(--line);">
+    <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Available / Open</span>
+    <div id="stat-available" style="font-size:24px;font-weight:800;color:#16a34a;margin:4px 0 2px;"><%= availableCount %></div>
+    <span style="font-size:11.5px;color:var(--muted);">Ready for walk-ins</span>
+  </div>
+  <div class="card" style="margin:0;padding:14px 18px;border:1px solid #fed7aa;background:#fffaf5;">
+    <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:#c2410c;font-weight:700;">Active Guests</span>
+    <div id="stat-occupied" style="font-size:24px;font-weight:800;color:#ea580c;margin:4px 0 2px;"><%= occupiedCount %></div>
+    <span style="font-size:11.5px;color:#c2410c;">Eating / Preparing</span>
+  </div>
+  <div class="card" style="margin:0;padding:14px 18px;border:1.5px solid #bfdbfe;background:#eff6ff;">
+    <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:#1e40af;font-weight:700;">Bill Requested</span>
+    <div id="stat-billing" style="font-size:24px;font-weight:800;color:#2563eb;margin:4px 0 2px;"><%= billingCount %></div>
+    <span style="font-size:11.5px;color:#1e40af;">Awaiting checkout</span>
+  </div>
 </div>
 
-<div id="table-grid">
-  <% if (!tables.length) { %>
-    <div class="card counter-empty" role="status" style="grid-column:1/-1;padding:48px 20px;text-align:center;">
-      <div style="font-size:32px;margin-bottom:8px;">▦</div>
-      <h3 style="margin:0 0 6px;">No tables configured</h3>
-      <p style="color:var(--muted);margin:0 0 16px;">Set up dining tables and generate QR codes in Table Setup.</p>
-      <a class="btn" href="/tables/create">+ Add First Table</a>
+<!-- SEARCH & STATUS FILTERS -->
+<div class="card" style="margin-bottom:16px;padding:12px 18px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div style="position:relative;flex:1;min-width:220px;">
+      <input type="text" id="counter-table-search" placeholder="Search table name or number..." style="margin:0;padding:8px 12px 8px 36px;border-radius:8px;border:1px solid var(--line-strong);font-size:13.5px;">
+      <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;">🔍</span>
     </div>
-  <% } %>
-  <% tables.forEach(function(table) { %>
-    <div class="card table-card" data-table-id="<%= table.id %>" data-status="<%= table.status %>">
-      <div class="item-row" style="margin-bottom:10px;">
-        <div>
-          <strong style="font-size:17px;display:block;"><%= table.table_name %></strong>
-          <span style="font-size:12px;color:var(--muted);">Table #<%= table.id %></span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-secondary counter-filter-btn active-chip" data-filter="all" style="padding:6px 12px;font-size:12px;background:var(--brand);color:#fff;border-color:var(--brand);">All (<%= totalTables %>)</button>
+      <button type="button" class="btn btn-secondary counter-filter-btn" data-filter="available" style="padding:6px 12px;font-size:12px;">✓ Available</button>
+      <button type="button" class="btn btn-secondary counter-filter-btn" data-filter="occupied" style="padding:6px 12px;font-size:12px;">● Dining</button>
+      <button type="button" class="btn btn-secondary counter-filter-btn" data-filter="billing" style="padding:6px 12px;font-size:12px;">💳 Bill Requested</button>
+    </div>
+  </div>
+</div>
+
+<!-- DUAL-PANE POS WORKSPACE -->
+<div class="counter-pos-grid">
+  <!-- LEFT COLUMN: INTERACTIVE FLOOR TABLE CARDS -->
+  <div class="counter-tables-column">
+    <div id="table-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px;">
+      <% if (!tables.length) { %>
+        <div class="card" style="grid-column:1/-1;text-align:center;padding:48px 16px;">
+          <div style="font-size:36px;margin-bottom:8px;">▦</div>
+          <h3>No tables configured</h3>
+          <p style="color:var(--muted);">Add tables in Table Setup to generate floor QR cards.</p>
+          <a class="btn" href="/tables/create">+ Add Tables</a>
         </div>
-        <span class="item-status table-status badge <%= table.status === 'available' ? 'status-available' : 'status-occupied' %>"><%= table.status.replaceAll('_', ' ') %></span>
-      </div>
-      <div class="table-elapsed" data-start-time style="font-size:12.5px;color:var(--muted);margin-bottom:14px;">
-        <%= table.status === 'available' ? 'Ready for guests' : 'Active dining' %>
-      </div>
-      <button type="button" class="btn view-table-btn" data-table-id="<%= table.id %>" style="width:100%;">View orders</button>
+      <% } %>
+
+      <% tables.forEach(function(table) { %>
+        <%
+          const status = table.status || 'available';
+          const isAvail = status === 'available';
+          const isBillReq = ['billing', 'bill_requested', 'pending_approval'].includes(status);
+          const isPrep = status === 'preparing';
+        %>
+        <div class="card table-card <%= isBillReq ? 'table-bill-pulse' : '' %>"
+             data-table-id="<%= table.id %>"
+             data-name="<%= (table.table_name || '').toLowerCase() %>"
+             data-status="<%= status %>"
+             style="margin:0;cursor:pointer;border-width:2px;display:flex;flex-direction:column;justify-content:space-between;transition:transform 0.15s ease, box-shadow 0.15s ease;border-color:<%= isAvail ? 'var(--line)' : (isBillReq ? '#3b82f6' : (isPrep ? '#f97316' : '#f59e0b')) %>;">
+          
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div>
+                <strong class="table-name" style="font-size:17px;color:var(--ink);"><%= table.table_name %></strong>
+                <span style="font-size:11.5px;color:var(--muted);display:block;">#<%= table.id %></span>
+              </div>
+              <span class="badge table-status-badge <%= isAvail ? 'status-available' : (isBillReq ? 'status-served' : 'status-occupied') %>" style="font-size:11px;font-weight:700;text-transform:capitalize;">
+                <%= status.replaceAll('_', ' ') %>
+              </span>
+            </div>
+
+            <div class="table-elapsed-timer" data-start-time="<%= table.updated_at %>" style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+              <%= isAvail ? 'Ready for seating' : 'Dining active' %>
+            </div>
+          </div>
+
+          <div style="display:grid;gap:6px;">
+            <button type="button" class="btn btn-secondary select-table-btn" data-table-id="<%= table.id %>" style="width:100%;font-size:12.5px;padding:6px 10px;font-weight:700;">
+              Inspect Orders ↗
+            </button>
+            <% if (!isAvail) { %>
+              <a href="/counter-admin/make_bill/<%= table.id %>" class="btn" style="width:100%;font-size:12px;padding:6px 10px;text-align:center;box-shadow:none;font-weight:700;">
+                💰 Settle Bill
+              </a>
+            <% } %>
+          </div>
+        </div>
+      <% }) %>
     </div>
-  <% }) %>
+  </div>
+
+  <!-- RIGHT COLUMN: DYNAMIC ORDER INSPECTOR & CHECKOUT PANEL -->
+  <div class="counter-inspector-column">
+    <div id="table-orders-panel" style="position:sticky;top:80px;">
+      <div class="card" style="margin:0;text-align:center;padding:56px 20px;border:1px dashed var(--line-strong);background:#fafaf9;">
+        <div style="font-size:40px;margin-bottom:12px;">📋</div>
+        <h3 style="margin:0 0 6px;color:var(--ink);">No Table Selected</h3>
+        <p style="color:var(--muted);font-size:13.5px;margin:0 auto;max-width:320px;">
+          Select any table from the floor plan to inspect its current tickets, mark dishes served, or print a bill.
+        </p>
+      </div>
+    </div>
+  </div>
 </div>
 
-<div id="table-orders-panel" style="margin-top:24px;"></div>
+<!-- SLIDE-OVER MODAL / DRAWER: PENDING ONLINE ORDERS -->
+<div id="online-orders-drawer" class="online-drawer-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+  <div class="online-drawer-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--line);background:#fafaf9;">
+      <div>
+        <h3 id="drawer-title" style="margin:0;font-size:18px;color:var(--ink);">Pending Online Orders</h3>
+        <span style="font-size:12px;color:var(--muted);">Approve delivery and pickup orders into the kitchen</span>
+      </div>
+      <button type="button" id="close-online-drawer-btn" style="background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted);">&times;</button>
+    </div>
+    <div id="online-orders-content" style="padding:20px;overflow-y:auto;flex:1;">
+      <div style="text-align:center;padding:30px 0;color:var(--muted);">Loading pending orders...</div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Dual-Pane Layout */
+  .counter-pos-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(360px, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .counter-pos-grid {
+      grid-template-columns: 1fr;
+    }
+    .counter-inspector-column {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 50;
+      background: #fff;
+      max-height: 80vh;
+      box-shadow: 0 -10px 30px rgba(0,0,0,0.2);
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+      overflow-y: auto;
+      display: none;
+    }
+    .counter-inspector-column.is-open {
+      display: block !important;
+    }
+  }
+
+  /* Active selected table card */
+  .table-card.selected-table {
+    border-color: var(--brand) !important;
+    box-shadow: 0 0 0 3px var(--brand-glow), var(--shadow-md) !important;
+    transform: translateY(-2px);
+  }
+
+  /* Bill Requested Gentle Pulse */
+  @keyframes pulseBorder {
+    0% { border-color: #3b82f6; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+    70% { border-color: #1d4ed8; box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+    100% { border-color: #3b82f6; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+  }
+  .table-bill-pulse {
+    animation: pulseBorder 2s infinite ease-in-out;
+  }
+
+  /* Online Orders Slide-over Drawer */
+  .online-drawer-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .online-drawer-box {
+    background: #fff;
+    width: 100%;
+    max-width: 480px;
+    height: 100vh;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+  }
+</style>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-  const restaurantId = <%= restaurant.id %>;
+  (function() {
+    const restaurantId = <%= restaurant.id %>;
+    const slug = '<%= restaurant.slug %>';
+    let selectedTableId = null;
+    let soundEnabled = true;
 
-  function refreshTables() {
-    fetch(`/counter-admin/get_table_updates/${restaurantId}`)
-      .then(r => { if (!r.ok) throw new Error('Table status request failed'); return r.json(); })
-      .then(data => {
-        data.tables.forEach(t => {
-          const card = document.querySelector(`.table-card[data-table-id="${t.id}"]`);
-          if (!card) return;
-          card.dataset.status = t.status;
-          const status = card.querySelector('.table-status');
-          if (status) status.textContent = t.status.replaceAll('_', ' ');
-          const elapsed = card.querySelector('[data-start-time]');
-          if (elapsed) elapsed.textContent = t.start_time ? `Open since ${new Date(t.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Ready for guests';
-        });
-      })
-      .catch(() => {});
-  }
+    // Web Audio Chime
+    const soundBtn = document.getElementById('btn-toggle-sound');
+    const soundLabel = document.getElementById('sound-label');
+    const soundIcon = document.getElementById('sound-icon');
 
-  // Fallback poll in case the socket connection drops - live updates below
-  // make this rarely necessary, but it's cheap insurance.
-  setInterval(refreshTables, 30000);
+    soundBtn.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      soundLabel.textContent = soundEnabled ? 'Sound: ON' : 'Sound: OFF';
+      soundIcon.textContent = soundEnabled ? '🔔' : '🔕';
+    });
 
-  const socket = io();
-  socket.emit('join-restaurant', restaurantId);
-  socket.on('restaurant-update', () => {
-    refreshTables();
-    // Also refresh whichever table's order panel is currently open, and
-    // the online-orders panel if it's open, so a live status change or a
-    // new order shows up without the staff member re-clicking anything.
-    const openPanel = document.getElementById('table-orders-panel');
-    const openTableId = openPanel && openPanel.dataset.tableId;
-    if (openTableId) {
-      fetch(`/counter-admin/get_table_orders/${openTableId}`).then(r => r.text()).then(html => { openPanel.innerHTML = html; });
+    function playChime() {
+      if (!soundEnabled) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+        osc.frequency.setValueAtTime(659.25, ctx.currentTime + 0.12); // E5
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      } catch (e) {}
     }
-  });
 
-  document.querySelectorAll('.view-table-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      fetch(`/counter-admin/get_table_orders/${btn.dataset.tableId}`)
+    // Load and select a table's order panel
+    window.loadTableOrders = function(tableId) {
+      selectedTableId = tableId;
+      document.querySelectorAll('.table-card').forEach(c => {
+        c.classList.toggle('selected-table', String(c.dataset.tableId) === String(tableId));
+      });
+
+      const panel = document.getElementById('table-orders-panel');
+      panel.dataset.tableId = tableId;
+      panel.innerHTML = `
+        <div class="card" style="margin:0;text-align:center;padding:40px 16px;">
+          <div style="font-size:24px;margin-bottom:8px;">⏳</div>
+          <p style="color:var(--muted);margin:0;">Loading orders for Table #${tableId}...</p>
+        </div>`;
+
+      // On mobile, show bottom sheet
+      const inspectorCol = document.querySelector('.counter-inspector-column');
+      if (inspectorCol) inspectorCol.classList.add('is-open');
+
+      fetch(`/counter-admin/get_table_orders/${tableId}`)
         .then(r => r.text())
         .then(html => {
-          const panel = document.getElementById('table-orders-panel');
           panel.innerHTML = html;
-          panel.dataset.tableId = btn.dataset.tableId;
+          attachPanelHandlers();
+        })
+        .catch(() => {
+          panel.innerHTML = `<div class="card alert" style="margin:0;">Failed to load table orders.</div>`;
         });
+    };
+
+    // Attach in-place AJAX action handlers to order items
+    function attachPanelHandlers() {
+      const panel = document.getElementById('table-orders-panel');
+      if (!panel) return;
+
+      // Single or batch update status
+      panel.querySelectorAll('.update-order-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const ids = btn.dataset.ids;
+          const status = btn.dataset.status;
+          btn.disabled = true;
+          btn.textContent = 'Updating...';
+
+          try {
+            const res = await fetch('/counter-admin/update-order', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: ids, status }),
+            });
+            const data = await res.json();
+            if (data.success) {
+              if (selectedTableId) loadTableOrders(selectedTableId);
+              refreshTables();
+            } else {
+              alert(data.message || 'Could not update status');
+              btn.disabled = false;
+            }
+          } catch (e) {
+            btn.disabled = false;
+          }
+        });
+      });
+
+      // Void / Cancel Table
+      const cancelBtn = panel.querySelector('#cancel-table-btn');
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', async () => {
+          if (!confirm('Are you sure you want to cancel and void all items on this table?')) return;
+          cancelBtn.disabled = true;
+          try {
+            await fetch(`/counter-admin/cancel_order/${cancelBtn.dataset.tableId}`);
+            selectedTableId = null;
+            panel.innerHTML = `
+              <div class="card" style="margin:0;text-align:center;padding:48px 20px;">
+                <p style="color:var(--muted);">Table order voided and table reset to available.</p>
+              </div>`;
+            refreshTables();
+          } catch (e) {
+            cancelBtn.disabled = false;
+          }
+        });
+      }
+
+      // Close mobile inspector
+      const closeMobileBtn = panel.querySelector('#close-inspector-mobile');
+      if (closeMobileBtn) {
+        closeMobileBtn.addEventListener('click', () => {
+          const inspectorCol = document.querySelector('.counter-inspector-column');
+          if (inspectorCol) inspectorCol.classList.remove('is-open');
+        });
+      }
+    }
+
+    // Bind card clicks
+    document.querySelectorAll('.table-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        // Don't trigger if clicking direct action links like "Settle Bill"
+        if (e.target.tagName === 'A' || e.target.closest('a')) return;
+        loadTableOrders(card.dataset.tableId);
+      });
     });
-  });
+
+    // Real-Time Table Updates Polling / Fetching
+    function refreshTables() {
+      fetch(`/counter-admin/get_table_updates/${restaurantId}`)
+        .then(r => r.json())
+        .then(data => {
+          let avail = 0;
+          let occ = 0;
+          let bill = 0;
+
+          data.tables.forEach(t => {
+            const card = document.querySelector(`.table-card[data-table-id="${t.id}"]`);
+            if (!card) return;
+
+            card.dataset.status = t.status;
+            const badge = card.querySelector('.table-status-badge');
+            const isAvail = t.status === 'available';
+            const isBill = ['billing', 'bill_requested', 'pending_approval'].includes(t.status);
+
+            if (isAvail) avail++;
+            else if (isBill) bill++;
+            else occ++;
+
+            card.classList.toggle('table-bill-pulse', isBill);
+            card.style.borderColor = isAvail ? 'var(--line)' : (isBill ? '#3b82f6' : (t.status === 'preparing' ? '#f97316' : '#f59e0b'));
+
+            if (badge) {
+              badge.textContent = t.status.replaceAll('_', ' ');
+              badge.className = 'badge table-status-badge ' + (isAvail ? 'status-available' : (isBill ? 'status-served' : 'status-occupied'));
+            }
+
+            const elapsedEl = card.querySelector('.table-elapsed-timer');
+            if (elapsedEl && t.start_time) {
+              elapsedEl.dataset.startTime = t.start_time;
+              updateTimerText(elapsedEl);
+            }
+          });
+
+          // Update KPI counts
+          document.getElementById('stat-available').textContent = avail;
+          document.getElementById('stat-occupied').textContent = occ;
+          document.getElementById('stat-billing').textContent = bill;
+        })
+        .catch(() => {});
+    }
+
+    function updateTimerText(el) {
+      if (!el.dataset.startTime || el.closest('.table-card').dataset.status === 'available') {
+        el.textContent = 'Ready for seating';
+        return;
+      }
+      const diffMinutes = Math.floor((Date.now() - new Date(el.dataset.startTime).getTime()) / 60000);
+      el.textContent = diffMinutes <= 0 ? 'Just seated' : `Seated for ${diffMinutes}m`;
+    }
+
+    setInterval(() => {
+      document.querySelectorAll('.table-elapsed-timer').forEach(updateTimerText);
+    }, 30000);
+
+    // Online Orders Drawer Handling
+    const onlineBtn = document.getElementById('btn-toggle-online');
+    const onlineBadge = document.getElementById('online-order-badge');
+    const onlineDrawer = document.getElementById('online-orders-drawer');
+    const closeOnlineBtn = document.getElementById('close-online-drawer-btn');
+    const onlineContent = document.getElementById('online-orders-content');
+
+    function checkOnlineOrders() {
+      fetch(`/counter-admin/get-online-orders/${restaurantId}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.count > 0) {
+            onlineBadge.textContent = data.count;
+            onlineBadge.style.display = 'inline-block';
+          } else {
+            onlineBadge.style.display = 'none';
+          }
+          if (onlineDrawer.style.display !== 'none') {
+            renderOnlineOrders(data.html, data.count);
+          }
+        })
+        .catch(() => {});
+    }
+
+    function renderOnlineOrders(html, count) {
+      if (count === 0) {
+        onlineContent.innerHTML = `
+          <div style="text-align:center;padding:48px 16px;color:var(--muted);">
+            <div style="font-size:32px;margin-bottom:8px;">✓</div>
+            <h4 style="margin:0 0 4px;">No Pending Online Orders</h4>
+            <p style="margin:0;font-size:13px;">New takeaway orders will show up here automatically.</p>
+          </div>`;
+        return;
+      }
+      onlineContent.innerHTML = html;
+
+      // Attach AJAX approve/decline
+      onlineContent.querySelectorAll('.approve-order-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          btn.textContent = 'Approving...';
+          await fetch(`/counter-admin/approve-order/${btn.dataset.orderId}`, { method: 'POST' });
+          checkOnlineOrders();
+          refreshTables();
+        });
+      });
+
+      onlineContent.querySelectorAll('.decline-order-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Decline and cancel this online order?')) return;
+          btn.disabled = true;
+          await fetch(`/counter-admin/decline-order/${btn.dataset.orderId}`, { method: 'POST' });
+          checkOnlineOrders();
+        });
+      });
+    }
+
+    onlineBtn.addEventListener('click', () => {
+      onlineDrawer.style.display = 'flex';
+      fetch(`/counter-admin/get-online-orders/${restaurantId}`)
+        .then(r => r.json())
+        .then(data => renderOnlineOrders(data.html, data.count));
+    });
+
+    closeOnlineBtn.addEventListener('click', () => {
+      onlineDrawer.style.display = 'none';
+    });
+    onlineDrawer.addEventListener('click', (e) => {
+      if (e.target === onlineDrawer) onlineDrawer.style.display = 'none';
+    });
+
+    // Real-time Socket.IO Connection
+    const socket = io();
+    socket.emit('join-restaurant', restaurantId);
+
+    socket.on('restaurant-update', (event) => {
+      playChime();
+      refreshTables();
+      checkOnlineOrders();
+
+      // If a table is currently open in inspector, update it without full-page reload
+      if (selectedTableId) {
+        fetch(`/counter-admin/get_table_orders/${selectedTableId}`)
+          .then(r => r.text())
+          .then(html => {
+            const panel = document.getElementById('table-orders-panel');
+            if (panel && String(panel.dataset.tableId) === String(selectedTableId)) {
+              panel.innerHTML = html;
+              attachPanelHandlers();
+            }
+          });
+      }
+    });
+
+    // Search and Status Filters
+    const searchInput = document.getElementById('counter-table-search');
+    const filterBtns = document.querySelectorAll('.counter-filter-btn');
+    let currentFilter = 'all';
+
+    function filterTables() {
+      const q = (searchInput.value || '').toLowerCase().trim();
+      document.querySelectorAll('.table-card').forEach(card => {
+        const name = card.dataset.name || '';
+        const status = card.dataset.status || '';
+        const isAvail = status === 'available';
+        const isBill = ['billing', 'bill_requested', 'pending_approval'].includes(status);
+        const isOcc = !isAvail && !isBill;
+
+        const matchesQuery = !q || name.includes(q);
+        let matchesStatus = true;
+
+        if (currentFilter === 'available') matchesStatus = isAvail;
+        else if (currentFilter === 'occupied') matchesStatus = isOcc;
+        else if (currentFilter === 'billing') matchesStatus = isBill;
+
+        card.style.display = (matchesQuery && matchesStatus) ? 'flex' : 'none';
+      });
+    }
+
+    searchInput.addEventListener('input', filterTables);
+    filterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterBtns.forEach(b => {
+          b.style.background = '#fff';
+          b.style.color = 'var(--ink-secondary)';
+          b.style.borderColor = 'var(--line)';
+        });
+        btn.style.background = 'var(--brand)';
+        btn.style.color = '#fff';
+        btn.style.borderColor = 'var(--brand)';
+
+        currentFilter = btn.dataset.filter;
+        filterTables();
+      });
+    });
+
+    // Initial check
+    checkOnlineOrders();
+  })();
 </script>

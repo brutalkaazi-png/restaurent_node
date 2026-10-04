@@ -1,0 +1,192 @@
+<%
+function mediaUrl(path) {
+  if (!path) return '';
+  return path.startsWith('assets/') ? '/' + path : '/uploads/' + path;
+}
+const initials = (user.name || 'U').split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase();
+%>
+
+<!-- HERO WELCOME BANNER -->
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div style="display:flex;align-items:center;gap:16px;">
+    <% if (user.logo) { %>
+      <img src="<%= mediaUrl(user.logo) %>" alt="<%= user.name %>" style="width:64px;height:64px;border-radius:14px;object-fit:cover;border:2px solid #ffffff;box-shadow:var(--shadow-md);">
+    <% } else { %>
+      <div style="width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;display:grid;place-items:center;font-size:24px;font-weight:900;box-shadow:var(--shadow-brand);">
+        <%= initials %>
+      </div>
+    <% } %>
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span class="badge status-available">● Restaurant Profile</span>
+        <span style="font-size:12px;color:var(--muted);"><%= user.slug %></span>
+      </div>
+      <h2 style="margin:0 0 2px;font-size:24px;"><%= user.name %></h2>
+      <p style="margin:0;color:var(--muted);font-size:13px;">Manage store branding, QR links, delivery rates, and security credentials.</p>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <a href="/<%= user.slug %>/menu" target="_blank" class="btn btn-secondary" style="font-size:13px;">
+      View Public Menu ↗
+    </a>
+  </div>
+</div>
+
+<!-- SUCCESS / ERROR ALERTS -->
+<% if (typeof success !== 'undefined' && success) { %>
+  <div class="alert alert-success" style="margin-bottom:18px;">
+    <span>✓</span> <%= success %>
+  </div>
+<% } %>
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <div class="message" style="margin-bottom:18px;">
+    <span>⚠️</span> <%= error %>
+  </div>
+<% } %>
+
+<form method="POST" action="/profile" enctype="multipart/form-data">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+    
+    <!-- LEFT COLUMN: GENERAL SETTINGS & BRANDING -->
+    <div style="display:grid;gap:20px;">
+      <!-- GENERAL DETAILS -->
+      <div class="card" style="margin:0;box-shadow:var(--shadow-sm);">
+        <h3 style="margin:0 0 14px;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:8px;">
+          Restaurant Information
+        </h3>
+
+        <div style="display:grid;gap:12px;">
+          <div>
+            <label for="prof-name">Restaurant / Display Name *</label>
+            <input type="text" id="prof-name" name="name" value="<%= user.name %>" required placeholder="e.g. United Cafe">
+          </div>
+
+          <div>
+            <label for="prof-slug">Custom Menu URL Slug</label>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:12.5px;color:var(--muted);font-family:monospace;">/menu/</span>
+              <input type="text" id="prof-slug" name="slug" value="<%= user.slug %>" placeholder="e.g. united-cafe" style="margin:0;">
+            </div>
+            <small style="color:var(--muted);display:block;margin-top:4px;">Affects your table QR codes and online ordering links.</small>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <label for="prof-email">Contact Email *</label>
+              <input type="email" id="prof-email" name="email" value="<%= user.email %>" required>
+            </div>
+            <div>
+              <label for="prof-phone">Phone Number</label>
+              <input type="tel" id="prof-phone" name="phone" value="<%= user.phone || '' %>" placeholder="+1 (555) 000-0000">
+            </div>
+          </div>
+
+          <div>
+            <label for="prof-address">Street Address</label>
+            <input type="text" id="prof-address" name="address" value="<%= user.address || '' %>" placeholder="123 Culinary Ave, City">
+          </div>
+        </div>
+      </div>
+
+      <!-- LOGO & BRANDING -->
+      <div class="card" style="margin:0;box-shadow:var(--shadow-sm);">
+        <h3 style="margin:0 0 14px;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:8px;">
+          Visual Identity & Logos
+        </h3>
+
+        <div style="display:grid;gap:14px;">
+          <div>
+            <label for="prof-logo">Restaurant Logo</label>
+            <input type="file" id="prof-logo" name="logo" accept="image/*">
+            <% if (user.logo) { %>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:8px;background:#f8fafc;padding:8px 12px;border-radius:8px;border:1px solid var(--line);">
+                <img src="<%= mediaUrl(user.logo) %>" alt="Current logo" style="width:36px;height:36px;border-radius:6px;object-fit:cover;">
+                <span style="font-size:12px;color:var(--muted);">Current logo on file</span>
+              </div>
+            <% } %>
+          </div>
+
+          <div>
+            <label for="prof-color">Theme Accent Color</label>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <input type="color" id="prof-color" name="theme_primary_color" value="<%= user.theme_primary_color || '#f97316' %>" style="width:50px;height:40px;padding:2px;border-radius:8px;cursor:pointer;">
+              <span style="font-size:13px;font-family:monospace;color:var(--ink-secondary);"><%= user.theme_primary_color || '#f97316' %></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: OPERATIONS & SECURITY -->
+    <div style="display:grid;gap:20px;">
+      <!-- ORDERING & SERVICE POLICIES -->
+      <div class="card" style="margin:0;box-shadow:var(--shadow-sm);">
+        <h3 style="margin:0 0 14px;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:8px;">
+          Service & Checkout Policies
+        </h3>
+
+        <div style="display:grid;gap:14px;">
+          <div style="background:#f8fafc;padding:12px 14px;border-radius:8px;border:1px solid var(--line);">
+            <label style="margin:0;cursor:pointer;display:flex;align-items:flex-start;gap:10px;">
+              <input type="checkbox" name="pay_first" value="1" <%= user.pay_first ? 'checked' : '' %> style="margin-top:3px;">
+              <div>
+                <strong style="color:var(--ink);font-size:13.5px;display:block;">Pay-First Ordering (Fast Casual Mode)</strong>
+                <span style="font-size:12px;color:var(--muted);display:block;margin-top:2px;">
+                  Orders must be paid at the counter before being fired to the kitchen.
+                </span>
+              </div>
+            </label>
+          </div>
+
+          <div style="background:#f8fafc;padding:12px 14px;border-radius:8px;border:1px solid var(--line);">
+            <label style="margin:0;cursor:pointer;display:flex;align-items:flex-start;gap:10px;">
+              <input type="checkbox" name="is_deliver" value="1" <%= user.is_deliver ? 'checked' : '' %> style="margin-top:3px;">
+              <div>
+                <strong style="color:var(--ink);font-size:13.5px;display:block;">Enable Home Delivery & Takeout</strong>
+                <span style="font-size:12px;color:var(--muted);display:block;margin-top:2px;">
+                  Allows customers to submit online delivery orders from your public menu.
+                </span>
+              </div>
+            </label>
+          </div>
+
+          <div>
+            <label for="prof-delivery-charge">Delivery Service Charge ($)</label>
+            <input type="number" step="0.5" min="0" id="prof-delivery-charge" name="delivery_charge" value="<%= user.delivery_charge || 0 %>">
+          </div>
+        </div>
+      </div>
+
+      <!-- PASSWORD UPDATE -->
+      <div class="card" style="margin:0;box-shadow:var(--shadow-sm);">
+        <h3 style="margin:0 0 14px;font-size:16px;border-bottom:1px solid var(--line);padding-bottom:8px;">
+          Security & Password
+        </h3>
+        <p style="font-size:12.5px;color:var(--muted);margin-top:-6px;margin-bottom:12px;">Leave blank if you do not want to change your password.</p>
+
+        <div style="display:grid;gap:10px;">
+          <div>
+            <label for="prof-curr-pass">Current Password</label>
+            <input type="password" id="prof-curr-pass" name="current_password" placeholder="••••••••">
+          </div>
+          <div>
+            <label for="prof-new-pass">New Password</label>
+            <input type="password" id="prof-new-pass" name="new_password" minlength="6" placeholder="Min 6 characters">
+          </div>
+          <div>
+            <label for="prof-confirm-pass">Confirm New Password</label>
+            <input type="password" id="prof-confirm-pass" name="confirm_password" minlength="6" placeholder="Repeat new password">
+          </div>
+        </div>
+      </div>
+
+      <!-- SAVE BUTTON -->
+      <div>
+        <button type="submit" class="btn" style="width:100%;padding:13px;font-size:15px;font-weight:700;box-shadow:var(--shadow-brand);">
+          Save Profile & Store Settings ↗
+        </button>
+      </div>
+    </div>
+  </div>
+</form>

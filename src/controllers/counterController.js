@@ -1,3 +1,5 @@
+const { deductInventoryForOrder } = require('../utils/recipeHelper');
+
 const { Op } = require('sequelize');
 const {
   sequelize,
@@ -349,6 +351,18 @@ async function completeOrder(req, res) {
       });
     }
 
+    // Auto-deduct raw ingredients based on recipes
+    try {
+      await deductInventoryForOrder(
+        ordersToBill,
+        table.restaurant_id,
+        req.branchId,
+        `Table ${table.table_name} Check #${userOrder.id}`
+      );
+    } catch (recipeErr) {
+      console.error('Recipe auto-deduction notice:', recipeErr.message);
+    }
+
     await TableCustomer.destroy({ where: { id: { [Op.in]: itemIds } } });
     const remaining = await TableCustomer.count({ where: { table_id: tableId, status: { [Op.ne]: 'cancelled' } } });
     if (remaining === 0) {
@@ -382,7 +396,10 @@ async function approveTableOrder(req, res) {
     let printHtml = null;
 
     if (table.restaurant.pay_first) {
-      const activeOrders = await TableCustomer.findAll({ where: { table_id: table.id }, transaction: t });
+      const activeOrders = await TableCustomer.findAll({
+        where: { table_id: table.id, status: 'pending_approval' },
+        transaction: t,
+      });
 
       if (req.body.print === 'true') {
         const subtotal = activeOrders.reduce((sum, o) => sum + parseFloat(o.price) * o.quantity, 0);
@@ -437,6 +454,18 @@ async function approveTableOrder(req, res) {
       newOrderPlaced(table.restaurant_id);
 
       await t.commit();
+
+      // Auto-deduct raw ingredients for pay-first order
+      try {
+        await deductInventoryForOrder(
+          activeOrders,
+          table.restaurant_id,
+          req.branchId,
+          `Table ${table.table_name} Pay-First`
+        );
+      } catch (recipeErr) {
+        console.error('Pay-first recipe deduction notice:', recipeErr.message);
+      }
       return res.json({ success: true, message: 'Order approved, paid, and table cleared.', print_html: printHtml });
     }
 

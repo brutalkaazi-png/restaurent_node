@@ -1,28 +1,513 @@
-<div class="card">
-  <div class="item-row">
-    <h2>Waiters</h2>
-    <a class="btn" href="/waiters/create">+ Add waiter</a>
+<%
+const totalStaff = waiters.length;
+const waiterCount = waiters.filter(w => w.user_role === 'waiter').length;
+const kitchenCount = waiters.filter(w => w.user_type === 'K').length;
+const counterCount = waiters.filter(w => w.user_type === 'Co').length;
+
+function getRoleInfo(member) {
+  if (member.user_type === 'K') {
+    return { name: 'Kitchen Chef', badgeClass: 'background:#fff1f2;color:#be123c;border:1px solid #fecdd3;', icon: '👨‍🍳', key: 'kitchen' };
+  }
+  if (member.user_type === 'Co') {
+    return { name: 'Counter Cashier', badgeClass: 'background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe;', icon: '💳', key: 'counter' };
+  }
+  return { name: 'Floor Waiter', badgeClass: 'background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;', icon: '🤵', key: 'waiter' };
+}
+%>
+
+<!-- HEADER & ACTIONS -->
+<div class="card welcome-card" style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;">
+  <div style="flex:1;min-width:300px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Staff & Shift Operations</span>
+      <span style="font-size:12px;color:var(--muted);"><%= totalStaff %> Active Team Members</span>
+    </div>
+    <h2 style="margin:0 0 6px;font-size:24px;letter-spacing:-0.02em;">Restaurant Team & Staff</h2>
+    <p style="margin:0;color:var(--muted);font-size:13.5px;max-width:680px;line-height:1.5;">Create, manage, and assign login permissions for your floor waiters, kitchen staff, and counter cashiers.</p>
+  </div>
+  <div style="display:inline-flex;align-items:center;gap:12px;flex-shrink:0;">
+    <button type="button" class="btn" id="open-add-staff-modal" style="height:42px;padding:0 20px;display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:700;box-shadow:var(--shadow-brand);white-space:nowrap;">
+      <span>+</span> Add Team Member
+    </button>
   </div>
 </div>
 
-<% if (!waiters.length) { %>
-  <div class="card">No waiters yet.</div>
-<% } %>
+<!-- TOAST NOTIFICATION -->
+<div id="staff-toast" style="display:none;position:fixed;top:24px;right:24px;z-index:99999;padding:12px 20px;border-radius:10px;box-shadow:var(--shadow-xl);font-size:13.5px;font-weight:700;align-items:center;gap:10px;">
+  <span id="toast-icon">✓</span>
+  <span id="toast-text"></span>
+</div>
 
-<% waiters.forEach(function(w) { %>
-  <div class="card">
-    <div class="item-row">
-      <div>
-        <strong><%= w.name %></strong>
-        <div style="font-size:0.85em;color:#777;"><%= w.email %></div>
-        <% if (w.address) { %><div style="font-size:0.85em;"><%= w.address %></div><% } %>
-      </div>
-      <div>
-        <a class="btn" href="/waiters/<%= w.id %>/edit">Edit</a>
-        <form method="POST" action="/waiters/<%= w.id %>/delete" style="display:inline;" onsubmit="return confirm('Remove this waiter?');">
-          <button type="submit" class="btn btn-secondary">Delete</button>
-        </form>
-      </div>
+<!-- 4 KPI SUMMARY CARDS -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-bottom:20px;">
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Total Team</span>
+    <div style="font-size:28px;font-weight:800;color:var(--ink);margin:6px 0 2px;"><%= totalStaff %></div>
+    <span style="font-size:12px;color:var(--muted);">All active staff accounts</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Floor Waiters</span>
+    <div style="font-size:28px;font-weight:800;color:#16a34a;margin:6px 0 2px;"><%= waiterCount %></div>
+    <span style="font-size:12px;color:var(--muted);">Table serving and guest orders</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Kitchen Pass / Chefs</span>
+    <div style="font-size:28px;font-weight:800;color:#be123c;margin:6px 0 2px;"><%= kitchenCount %></div>
+    <span style="font-size:12px;color:var(--muted);">KDS order fulfillment</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Counter Cashiers</span>
+    <div style="font-size:28px;font-weight:800;color:#2563eb;margin:6px 0 2px;"><%= counterCount %></div>
+    <span style="font-size:12px;color:var(--muted);">POS settlement & approvals</span>
+  </div>
+</div>
+
+<!-- SEARCH & ROLE FILTERS -->
+<div class="card" style="margin-bottom:20px;padding:14px 20px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+    <!-- Search Bar -->
+    <div style="position:relative;flex:1;min-width:260px;">
+      <input type="text" id="staff-search-input" placeholder="Search team by name, email, or role..." style="margin:0;height:40px;padding:0 14px 0 38px;border-radius:8px;border:1px solid var(--line-strong);font-size:13.5px;">
+      <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none;">🔍</span>
+    </div>
+    <!-- Filter Chips -->
+    <div style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-secondary staff-filter-btn active-filter" data-filter="all" style="margin:0;height:36px;padding:0 14px;font-size:12.5px;font-weight:700;background:var(--brand);color:#fff;border-color:var(--brand);">All (<%= totalStaff %>)</button>
+      <button type="button" class="btn btn-secondary staff-filter-btn" data-filter="waiter" style="margin:0;height:36px;padding:0 14px;font-size:12.5px;font-weight:600;">🤵 Waiters (<%= waiterCount %>)</button>
+      <button type="button" class="btn btn-secondary staff-filter-btn" data-filter="kitchen" style="margin:0;height:36px;padding:0 14px;font-size:12.5px;font-weight:600;">👨‍🍳 Kitchen (<%= kitchenCount %>)</button>
+      <button type="button" class="btn btn-secondary staff-filter-btn" data-filter="counter" style="margin:0;height:36px;padding:0 14px;font-size:12.5px;font-weight:600;">💳 Cashier (<%= counterCount %>)</button>
     </div>
   </div>
-<% }) %>
+</div>
+
+<!-- STAFF MEMBERS LIST -->
+<% if (!waiters.length) { %>
+  <div class="card" style="text-align:center;padding:56px 20px;" role="status">
+    <div style="font-size:42px;margin-bottom:12px;">👥</div>
+    <h3 style="margin:0 0 6px;">No staff accounts configured yet</h3>
+    <p style="color:var(--muted);margin:0 0 18px;">Create login accounts for your team so they can access the POS counter, kitchen board, or take orders.</p>
+    <button type="button" class="btn" onclick="openCreateStaffModal()">+ Add First Team Member</button>
+  </div>
+<% } else { %>
+  <div id="staff-grid-container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">
+    <% waiters.forEach(function(member) { %>
+      <%
+        const roleInfo = getRoleInfo(member);
+        const initials = (member.name || 'S').split(/\s+/).map(p => p[0]).slice(0, 2).join('').toUpperCase();
+      %>
+      <div class="card staff-card"
+        data-id="<%= member.id %>"
+        data-name="<%= (member.name || '').toLowerCase() %>"
+        data-email="<%= (member.email || '').toLowerCase() %>"
+        data-role="<%= roleInfo.key %>"
+        style="margin:0;display:flex;flex-direction:column;justify-content:space-between;border:1px solid var(--line);box-shadow:var(--shadow-xs);transition:all 0.15s ease;">
+
+        <div>
+          <!-- TOP AVATAR, NAME & ROLE -->
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-size:17px;font-weight:800;border:1px solid var(--brand-border);flex-shrink:0;">
+                <%= initials %>
+              </div>
+              <div style="min-width:0;">
+                <strong class="staff-name-text" style="font-size:16.5px;color:var(--ink);display:block;line-height:1.2;margin-bottom:2px;"><%= member.name %></strong>
+                <span style="font-size:12.5px;color:var(--muted);display:block;word-break:break-all;"><%= member.email %></span>
+              </div>
+            </div>
+
+            <!-- Role Badge -->
+            <span class="badge" style="<%= roleInfo.badgeClass %>font-size:11.5px;font-weight:700;padding:4px 10px;flex-shrink:0;">
+              <%= roleInfo.icon %> <%= roleInfo.name %>
+            </span>
+          </div>
+
+          <!-- EXTRA METADATA (Address, Phone) -->
+          <div style="background:#f8fafc;padding:10px 14px;border-radius:8px;border:1px solid var(--line);font-size:12.5px;color:var(--ink-secondary);margin-bottom:14px;display:grid;gap:4px;">
+            <% if (member.phone) { %>
+              <div>📞 <strong>Phone:</strong> <%= member.phone %></div>
+            <% } %>
+            <% if (member.address) { %>
+              <div>📍 <strong>Address:</strong> <%= member.address %></div>
+            <% } %>
+            <div>🔑 <strong>Login Status:</strong> <span class="badge status-available" style="font-size:10.5px;padding:2px 6px;">Approved</span></div>
+          </div>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div style="display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:12px;">
+          <!-- Quick Edit Modal Trigger -->
+          <button type="button" class="btn btn-secondary edit-staff-btn"
+            data-id="<%= member.id %>"
+            data-name="<%= member.name %>"
+            data-email="<%= member.email %>"
+            data-role="<%= roleInfo.key %>"
+            data-phone="<%= member.phone || '' %>"
+            data-address="<%= member.address || '' %>"
+            style="flex:1;text-align:center;padding:7px 12px;font-size:12.5px;font-weight:600;">
+            ✏️ Edit Profile
+          </button>
+
+          <!-- Delete Trigger -->
+          <button type="button" class="btn btn-secondary delete-staff-btn"
+            data-id="<%= member.id %>"
+            data-name="<%= member.name %>"
+            style="padding:7px 12px;font-size:12.5px;color:#be123c;border-color:#fecdd3;background:#fff1f2;"
+            title="Remove staff member">
+            🗑️
+          </button>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+<% } %>
+
+<!-- MODAL: ADD / EDIT STAFF MEMBER -->
+<div id="staff-modal" class="modal-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="staff-modal-title">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <span class="badge status-available" style="margin-bottom:4px;display:inline-block;">● Team Member Account</span>
+        <h3 id="staff-modal-title" style="margin:0;font-size:18px;color:var(--ink);">Add Team Member</h3>
+      </div>
+      <button type="button" class="modal-close" id="close-staff-modal-btn" aria-label="Close modal">&times;</button>
+    </div>
+
+    <form id="staff-modal-form">
+      <input type="hidden" name="id" id="staff-modal-id">
+
+      <div class="modal-body">
+        <div>
+          <label for="staff-modal-name">Full Name *</label>
+          <input type="text" id="staff-modal-name" name="name" required placeholder="e.g. Alex Johnson">
+        </div>
+
+        <div>
+          <label for="staff-modal-email">Login Email Address *</label>
+          <input type="email" id="staff-modal-email" name="email" required placeholder="alex@restaurant.com">
+        </div>
+
+        <div>
+          <label for="staff-modal-role">Assigned Role & Workstation *</label>
+          <select id="staff-modal-role" name="role" required>
+            <option value="waiter">Floor Waiter (Table ordering & customer service)</option>
+            <option value="kitchen">Kitchen Chef (KDS kitchen display & cooking queue)</option>
+            <option value="counter">Counter Cashier (POS checkout & bill settlements)</option>
+          </select>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label for="staff-modal-password" id="lbl-staff-password">Password *</label>
+            <input type="password" id="staff-modal-password" name="password" minlength="6" placeholder="Min 6 characters">
+          </div>
+          <div>
+            <label for="staff-modal-password-confirm" id="lbl-staff-confirm">Confirm Password *</label>
+            <input type="password" id="staff-modal-password-confirm" name="password_confirmation" minlength="6" placeholder="Repeat password">
+          </div>
+        </div>
+        <small id="password-hint" style="display:none;color:var(--muted);margin-top:-6px;margin-bottom:4px;">Leave password fields blank if you want to keep the existing password.</small>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <label for="staff-modal-phone">Phone Number (Optional)</label>
+            <input type="tel" id="staff-modal-phone" name="phone" placeholder="+1 (555) 000-0000">
+          </div>
+          <div>
+            <label for="staff-modal-address">Address / Location (Optional)</label>
+            <input type="text" id="staff-modal-address" name="address" placeholder="City or street address">
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="cancel-staff-modal-btn">Cancel</button>
+        <button type="submit" class="btn" id="save-staff-modal-btn" style="box-shadow:var(--shadow-brand);">Save Team Member</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  /* Modal Layout */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 16px;
+    animation: modalFadeIn 0.15s ease-out;
+  }
+  @keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .modal-box {
+    background: #ffffff;
+    width: 100%;
+    max-width: 520px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    border: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--line);
+    background: #fafaf9;
+  }
+  .modal-close {
+    background: transparent;
+    border: none;
+    font-size: 26px;
+    color: var(--muted);
+    cursor: pointer;
+    line-height: 1;
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-close:hover {
+    background: #f1f5f9;
+    color: var(--ink);
+  }
+  .modal-body {
+    padding: 20px 24px;
+    display: grid;
+    gap: 14px;
+  }
+  .modal-footer {
+    padding: 16px 24px;
+    background: #fafaf9;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+</style>
+
+<script>
+  (function() {
+    const toast = document.getElementById('staff-toast');
+    const toastText = document.getElementById('toast-text');
+    const toastIcon = document.getElementById('toast-icon');
+
+    // Toast helper
+    function showToast(message, isError = false) {
+      toastText.textContent = message;
+      toastIcon.textContent = isError ? '⚠️' : '✓';
+      toast.style.background = isError ? '#fef2f2' : '#ecfdf5';
+      toast.style.color = isError ? '#991b1b' : '#065f46';
+      toast.style.border = isError ? '1px solid #fecaca' : '1px solid #a7f3d0';
+      toast.style.display = 'flex';
+      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+
+    // Modal elements
+    const staffModal = document.getElementById('staff-modal');
+    const staffForm = document.getElementById('staff-modal-form');
+    const staffHeadline = document.getElementById('staff-modal-title');
+    const staffIdInput = document.getElementById('staff-modal-id');
+    const staffNameInput = document.getElementById('staff-modal-name');
+    const staffEmailInput = document.getElementById('staff-modal-email');
+    const staffRoleInput = document.getElementById('staff-modal-role');
+    const staffPasswordInput = document.getElementById('staff-modal-password');
+    const staffConfirmInput = document.getElementById('staff-modal-password-confirm');
+    const passwordHint = document.getElementById('password-hint');
+    const lblPassword = document.getElementById('lbl-staff-password');
+    const lblConfirm = document.getElementById('lbl-staff-confirm');
+    const openAddBtn = document.getElementById('open-add-staff-modal');
+    const closeBtn = document.getElementById('close-staff-modal-btn');
+    const cancelBtn = document.getElementById('cancel-staff-modal-btn');
+    const saveBtn = document.getElementById('save-staff-modal-btn');
+
+    window.openCreateStaffModal = function() {
+      staffHeadline.textContent = 'Add Team Member';
+      staffIdInput.value = '';
+      staffNameInput.value = '';
+      staffEmailInput.value = '';
+      staffRoleInput.value = 'waiter';
+      staffPasswordInput.value = '';
+      staffConfirmInput.value = '';
+      staffPasswordInput.required = true;
+      staffConfirmInput.required = true;
+      lblPassword.textContent = 'Password *';
+      lblConfirm.textContent = 'Confirm Password *';
+      passwordHint.style.display = 'none';
+      document.getElementById('staff-modal-phone').value = '';
+      document.getElementById('staff-modal-address').value = '';
+
+      staffModal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => staffNameInput.focus(), 50);
+    };
+
+    function openEditStaffModal(btn) {
+      staffHeadline.textContent = 'Edit Team Member Profile';
+      staffIdInput.value = btn.dataset.id;
+      staffNameInput.value = btn.dataset.name;
+      staffEmailInput.value = btn.dataset.email;
+      staffRoleInput.value = btn.dataset.role || 'waiter';
+      staffPasswordInput.value = '';
+      staffConfirmInput.value = '';
+      staffPasswordInput.required = false;
+      staffConfirmInput.required = false;
+      lblPassword.textContent = 'New Password (Optional)';
+      lblConfirm.textContent = 'Confirm New Password';
+      passwordHint.style.display = 'block';
+      document.getElementById('staff-modal-phone').value = btn.dataset.phone || '';
+      document.getElementById('staff-modal-address').value = btn.dataset.address || '';
+
+      staffModal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => staffNameInput.focus(), 50);
+    }
+
+    function closeStaffModal() {
+      staffModal.style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    if (openAddBtn) openAddBtn.addEventListener('click', openCreateStaffModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeStaffModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeStaffModal);
+    staffModal.addEventListener('click', (e) => {
+      if (e.target === staffModal) closeStaffModal();
+    });
+
+    document.querySelectorAll('.edit-staff-btn').forEach(btn => {
+      btn.addEventListener('click', () => openEditStaffModal(btn));
+    });
+
+    // Form Submit via AJAX
+    staffForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+
+      const id = staffIdInput.value;
+      const url = id ? `/waiters/${id}` : '/waiters';
+      const formData = new URLSearchParams(new FormData(staffForm));
+
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: formData.toString()
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          closeStaffModal();
+          showToast('Team member saved successfully!');
+          setTimeout(() => location.reload(), 500);
+        } else {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Team Member';
+          const errorMsg = data.errors ? data.errors.join('\n') : (data.message || 'Could not save staff member.');
+          alert(errorMsg);
+        }
+      } catch (err) {
+        staffForm.method = 'POST';
+        staffForm.action = url;
+        staffForm.submit();
+      }
+    });
+
+    // Delete Staff Member
+    document.querySelectorAll('.delete-staff-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+
+        if (!confirm(`Are you sure you want to remove "${name}" from your team?`)) {
+          return;
+        }
+
+        btn.disabled = true;
+
+        try {
+          const res = await fetch(`/waiters/${id}/delete`, {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json',
+            }
+          });
+
+          if (res.ok) {
+            const card = btn.closest('.staff-card');
+            if (card) {
+              card.style.opacity = '0';
+              card.style.transform = 'scale(0.95)';
+              setTimeout(() => card.remove(), 250);
+            }
+            showToast(`Removed "${name}" from team`);
+          } else {
+            btn.disabled = false;
+            alert('Failed to remove staff member.');
+          }
+        } catch (err) {
+          btn.disabled = false;
+          alert('Network error while deleting staff member.');
+        }
+      });
+    });
+
+    // Search and Role Filter
+    const searchInput = document.getElementById('staff-search-input');
+    const filterButtons = document.querySelectorAll('.staff-filter-btn');
+    let currentFilter = 'all';
+
+    function filterStaff() {
+      const q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+      document.querySelectorAll('.staff-card').forEach(card => {
+        const name = card.dataset.name || '';
+        const email = card.dataset.email || '';
+        const role = card.dataset.role || '';
+
+        const matchesSearch = !q || name.includes(q) || email.includes(q) || role.includes(q);
+        const matchesRole = currentFilter === 'all' || role === currentFilter;
+
+        card.style.display = (matchesSearch && matchesRole) ? 'flex' : 'none';
+      });
+    }
+
+    if (searchInput) searchInput.addEventListener('input', filterStaff);
+
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        filterButtons.forEach(b => {
+          b.style.background = '#fff';
+          b.style.color = 'var(--ink-secondary)';
+          b.style.borderColor = 'var(--line)';
+        });
+        btn.style.background = 'var(--brand)';
+        btn.style.color = '#fff';
+        btn.style.borderColor = 'var(--brand)';
+
+        currentFilter = btn.dataset.filter;
+        filterStaff();
+      });
+    });
+
+  })();
+</script>

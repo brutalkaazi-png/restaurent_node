@@ -6,207 +6,670 @@ function statusLabel(status) {
   return 'Pending';
 }
 
-const categories = [...new Set(activeOrders.map((order) => order.item && order.item.category ? order.item.category.category_name : 'Uncategorized'))].sort();
-const pendingCount = activeOrders.filter(o => o.status === 'order_food' || o.status === 'order_drink' || o.status === 'confirmed').length;
-const cookingCount = activeOrders.filter(o => o.status === 'preparing').length;
+const isBar = station === 'bar';
+const updateBaseUrl = isBar ? '/kitchen-admin' : '/kitchen-admin/kitchen';
+const categories = [...new Set(activeOrders.map((o) => o.item && o.item.category ? o.item.category.category_name : 'Uncategorized'))].sort();
+const pendingOrders = activeOrders.filter(o => ['order_food', 'order_drink', 'approved', 'confirmed'].includes(o.status));
+const cookingOrders = activeOrders.filter(o => o.status === 'preparing');
+
+// Group tickets by table for Table-Wise tab
+const ticketsByTable = {};
+activeOrders.forEach(o => {
+  const tblName = o.table ? o.table.table_name : 'Walk-In';
+  if (!ticketsByTable[tblName]) ticketsByTable[tblName] = [];
+  ticketsByTable[tblName].push(o);
+});
+
+// Consolidate batch totals for Expo / Prep summary tab
+const itemTotals = {};
+activeOrders.forEach(o => {
+  const name = o.item ? o.item.item_name : ('Item #' + o.item_id);
+  const key = o.item_id + (o.variant ? ('-' + o.variant.name) : '');
+  if (!itemTotals[key]) {
+    itemTotals[key] = {
+      id: o.item_id,
+      name,
+      variant: o.variant ? o.variant.name : null,
+      category: o.item && o.item.category ? o.item.category.category_name : 'General',
+      sold_out: o.item ? o.item.sold_out : false,
+      totalQty: 0,
+      tables: [],
+      orderIds: []
+    };
+  }
+  itemTotals[key].totalQty += o.quantity;
+  itemTotals[key].orderIds.push(`${o._model}:${o.id}`);
+  const tbl = o.table ? o.table.table_name : 'Takeaway';
+  if (!itemTotals[key].tables.includes(tbl)) itemTotals[key].tables.push(tbl);
+});
 %>
 
-<section class="card station-hero" style="margin-bottom:16px;">
-  <div class="station-toolbar" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+<!-- TOAST ALERT NOTIFICATION -->
+<div id="kds-toast" style="display:none;position:fixed;top:20px;right:20px;z-index:99999;padding:12px 20px;border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,0.5);font-size:13.5px;font-weight:700;align-items:center;gap:10px;">
+  <span id="toast-icon">✓</span>
+  <span id="toast-text"></span>
+</div>
+
+<!-- KDS HIGH-CONTRAST CONTROL BAR -->
+<section class="card station-hero" style="margin-bottom:16px;background:#0f172a;border:1px solid #1e293b;padding:18px 24px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
     <div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-        <span class="badge" style="background:#334155;color:#38bdf8;font-size:11px;font-weight:700;">● LIVE DISPATCH PASS</span>
-        <!-- STATION SWITCHER TABS -->
-        <div style="display:inline-flex;background:#0f172a;border-radius:8px;padding:3px;border:1px solid #334155;">
-          <a href="/kitchen-admin/kitchen" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;<%= station === 'kitchen' ? 'background:var(--brand);color:#fff;' : 'color:#94a3b8;' %>">
-            🍳 Kitchen Line
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+        <span class="badge" style="background:#1e293b;border:1px solid #334155;color:#38bdf8;font-size:11px;font-weight:800;">
+          ● LIVE KDS PASS
+        </span>
+        <!-- STATION TOGGLE PILL -->
+        <div style="display:inline-flex;background:#090d16;border-radius:8px;padding:3px;border:1px solid #334155;">
+          <a href="/kitchen-admin/kitchen" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;<%= !isBar ? 'background:var(--brand);color:#fff;' : 'color:#94a3b8;' %>">
+            🍳 Hot Kitchen
           </a>
-          <a href="/kitchen-admin/bar" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;<%= station === 'bar' ? 'background:var(--brand);color:#fff;' : 'color:#94a3b8;' %>">
+          <a href="/kitchen-admin/bar" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;text-decoration:none;<%= isBar ? 'background:var(--brand);color:#fff;' : 'color:#94a3b8;' %>">
             🍸 Bar Station
           </a>
         </div>
       </div>
-      <h2 style="margin:0 0 4px;color:#f8fafc;"><%= station === 'bar' ? 'Bar & Drinks Station' : 'Hot Food Kitchen Station' %></h2>
-      <p style="margin:0;color:#94a3b8;font-size:13px;">Synchronized with counter cashier and guest QR tables. Real-time ticket dispatch.</p>
+      <h2 style="margin:0 0 2px;color:#f8fafc;font-size:22px;"><%= isBar ? 'Bar & Beverage Dispatch' : 'Kitchen Expediter Station' %></h2>
+      <p style="margin:0;color:#94a3b8;font-size:13px;">Real-time Socket.IO synchronization &middot; Zero-reload bump bar</p>
     </div>
 
     <!-- METRICS & TOOLBAR -->
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-      <div style="display:flex;gap:8px;">
-        <span class="badge" style="background:#1e293b;border:1px solid #334155;color:#f8fafc;padding:6px 10px;font-size:12px;">
-          ⏳ <strong><%= pendingCount %></strong> Pending
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="display:flex;gap:6px;">
+        <span class="badge" style="background:#1e293b;border:1px solid #334155;color:#f8fafc;padding:6px 12px;font-size:12.5px;">
+          ⏳ <strong id="kds-pending-count"><%= pendingOrders.length %></strong> Pending
         </span>
-        <span class="badge" style="background:#1e293b;border:1px solid #334155;color:#38bdf8;padding:6px 10px;font-size:12px;">
-          🔥 <strong><%= cookingCount %></strong> Cooking
+        <span class="badge" style="background:#1e293b;border:1px solid #334155;color:#38bdf8;padding:6px 12px;font-size:12.5px;">
+          🔥 <strong id="kds-cooking-count"><%= cookingOrders.length %></strong> Cooking
         </span>
       </div>
 
+      <!-- CATEGORY FILTER -->
       <label for="station-category" style="margin:0;color:#cbd5e1;font-size:12px;font-weight:600;">
-        Course:
-        <select id="station-category" aria-label="Filter kitchen tickets by category" style="margin:2px 0 0;padding:5px 8px;background:#1e293b;color:#f8fafc;border:1px solid #334155;border-radius:6px;font-size:12px;">
-          <option value="all">All categories (<%= activeOrders.length %>)</option>
-          <% categories.forEach((category) => { %><option value="<%= category %>"><%= category %></option><% }) %>
+        <select id="station-category" aria-label="Filter tickets by category" style="margin:0;padding:6px 10px;background:#1e293b;color:#f8fafc;border:1px solid #334155;border-radius:6px;font-size:12.5px;">
+          <option value="all">All Courses (<%= activeOrders.length %>)</option>
+          <% categories.forEach(function(cat) { %>
+            <option value="<%= cat %>"><%= cat %></option>
+          <% }) %>
         </select>
       </label>
 
-      <button type="button" id="toggle-sound-btn" class="btn btn-secondary" style="padding:6px 10px;font-size:12px;border:1px solid #334155;background:#1e293b;color:#f8fafc;">
-        🔔 Audio Alert: ON
+      <!-- AUDIO CHIME TOGGLE -->
+      <button type="button" id="toggle-sound-btn" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;border:1px solid #334155;background:#1e293b;color:#f8fafc;white-space:nowrap;">
+        🔔 Audio: ON
+      </button>
+
+      <!-- FULLSCREEN TOGGLE -->
+      <button type="button" id="toggle-fullscreen-btn" class="btn btn-secondary" style="padding:6px 12px;font-size:12px;border:1px solid #334155;background:#1e293b;color:#f8fafc;" title="Toggle Fullscreen for kitchen monitor">
+        ⛶ Fullscreen
       </button>
     </div>
   </div>
+
+  <!-- NAVIGATION TABS -->
+  <div style="display:flex;gap:8px;border-top:1px solid #1e293b;padding-top:14px;margin-top:14px;overflow-x:auto;">
+    <button type="button" class="btn kds-tab-btn active-tab" data-tab="tab-tickets" style="padding:7px 16px;font-size:13px;font-weight:700;border-radius:6px;">
+      🎫 Live Ticket Cards (<%= activeOrders.length %>)
+    </button>
+    <button type="button" class="btn btn-secondary kds-tab-btn" data-tab="tab-expo" style="padding:7px 16px;font-size:13px;font-weight:600;border-radius:6px;color:#f8fafc;background:#1e293b;border-color:#334155;">
+      📊 Batch Expo Summary (<%= Object.keys(itemTotals).length %>)
+    </button>
+    <button type="button" class="btn btn-secondary kds-tab-btn" data-tab="tab-tables" style="padding:7px 16px;font-size:13px;font-weight:600;border-radius:6px;color:#f8fafc;background:#1e293b;border-color:#334155;">
+      ▦ Table Grouped (<%= Object.keys(ticketsByTable).length %>)
+    </button>
+    <button type="button" class="btn btn-secondary kds-tab-btn" data-tab="tab-history" style="padding:7px 16px;font-size:13px;font-weight:600;border-radius:6px;color:#f8fafc;background:#1e293b;border-color:#334155;">
+      📜 Completed Today (<%= finishedOrdersToday.count %>)
+    </button>
+  </div>
 </section>
 
-<% if (!activeOrders.length) { %>
-  <section class="card" style="text-align:center;padding:56px 20px;" role="status">
-    <div style="font-size:40px;margin-bottom:12px;"><%= station === 'bar' ? '🍹' : '👨‍🍳' %></div>
-    <h3 style="margin:0 0 6px;">All tickets clear on <%= station === 'bar' ? 'Bar Station' : 'Kitchen Station' %></h3>
-    <p style="color:var(--muted);margin:0;">No orders are currently waiting. New guest orders will appear automatically with an alert.</p>
-  </section>
-<% } else { %>
-  <section class="ticket-grid" aria-label="Active kitchen tickets">
-    <% activeOrders.forEach((order) => {
-      const category = order.item && order.item.category ? order.item.category.category_name : 'Uncategorized';
-      const canAdvance = !['cancelled', 'order_delivered'].includes(order.status);
-      const nextAction = order.status === 'preparing' ? 'order_delivered' : 'preparing';
-      const nextLabel = order.status === 'preparing' ? '✓ Mark ready' : '▶ Start cooking';
-      const toppings = Array.isArray(order.toppings) ? order.toppings.map((topping) => topping.name || topping).join(', ') : '';
-    %>
-      <article class="ticket" data-category="<%= category %>" data-created-at="<%= new Date(order.created_at).toISOString() %>" style="border-radius:12px;overflow:hidden;">
-        <div class="ticket-head" style="padding:12px 14px;">
+<!-- TAB 1: LIVE TICKET CARDS GRID -->
+<div id="tab-tickets" class="kds-tab-content">
+  <% if (!activeOrders.length) { %>
+    <section class="card" style="text-align:center;padding:64px 20px;background:#1e293b;border:1px solid #334155;color:#f8fafc;" role="status">
+      <div style="font-size:48px;margin-bottom:12px;"><%= isBar ? '🍹' : '👨‍🍳' %></div>
+      <h3 style="margin:0 0 6px;color:#f8fafc;font-size:20px;">All stations clear on <%= isBar ? 'Bar Station' : 'Kitchen Pass' %></h3>
+      <p style="color:#94a3b8;margin:0;font-size:14px;">No active orders waiting. New tickets will alert and appear automatically.</p>
+    </section>
+  <% } else { %>
+    <section class="ticket-grid" aria-label="Active kitchen tickets" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px;">
+      <% activeOrders.forEach((order) => {
+        const category = order.item && order.item.category ? order.item.category.category_name : 'Uncategorized';
+        const isPrep = order.status === 'preparing';
+        const nextAction = isPrep ? 'order_delivered' : 'preparing';
+        const nextLabel = isPrep ? '✓ Mark Ready & Serve' : '▶ Start Cooking';
+        const toppings = Array.isArray(order.toppings) ? order.toppings.map(t => t.name || t).join(', ') : '';
+        const tableName = order.table ? order.table.table_name : (order._model === 'preorder' ? 'Paid Pre-order' : 'Walk-in');
+      %>
+        <article class="ticket <%= isPrep ? 'ticket-cooking' : '' %>"
+                 id="ticket-<%= order._model %>-<%= order.id %>"
+                 data-id="<%= order.id %>"
+                 data-source="<%= order._model %>"
+                 data-category="<%= category %>"
+                 data-created-at="<%= new Date(order.created_at).toISOString() %>"
+                 style="background:#1e293b;border:2px solid #334155;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 10px 25px -5px rgba(0,0,0,0.5);transition:all 0.2s ease;">
+
           <div>
-            <h3 style="font-size:18px;margin:0 0 2px;">Table <%= order.table ? order.table.table_name : 'Walk-In' %></h3>
-            <div class="ticket-meta" style="font-size:12px;">Ticket #<%= order.id %> · <span style="font-weight:700;color:#ffffff;"><%= statusLabel(order.status) %></span></div>
+            <!-- TICKET HEADER -->
+            <div class="ticket-head" style="padding:14px 16px;background:rgba(15,23,42,0.6);border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between;">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <strong style="font-size:17px;color:#f8fafc;">Table <%= tableName %></strong>
+                  <span class="badge" style="background:#0f172a;color:#94a3b8;font-size:11px;">#<%= order.id %></span>
+                </div>
+                <span class="badge status-pill" style="font-size:11px;font-weight:700;margin-top:4px;background:<%= isPrep ? '#ea580c' : '#334155' %>;color:#fff;">
+                  ● <%= statusLabel(order.status) %>
+                </span>
+              </div>
+              <span class="elapsed" data-elapsed style="font-weight:800;padding:4px 10px;border-radius:8px;font-size:13px;background:#6ee7b7;color:#064e3b;">
+                0m
+              </span>
+            </div>
+
+            <!-- TICKET BODY -->
+            <div class="ticket-lines" style="padding:16px;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                <strong style="font-size:16px;color:#ffffff;line-height:1.3;">
+                  <%= order.item ? order.item.item_name : ('Item #' + order.item_id) %>
+                </strong>
+                <span class="badge" style="background:#f97316;color:#ffffff;font-size:14px;font-weight:900;padding:4px 10px;border-radius:6px;flex-shrink:0;">
+                  x<%= order.quantity %>
+                </span>
+              </div>
+
+              <% if (order.variant) { %>
+                <div style="font-size:13px;color:#cbd5e1;margin-bottom:4px;">
+                  Size/Option: <strong style="color:#ffffff;"><%= order.variant.name %></strong>
+                </div>
+              <% } %>
+
+              <% if (toppings) { %>
+                <div style="font-size:12.5px;color:#94a3b8;margin-bottom:4px;">
+                  + Add-ons: <%= toppings %>
+                </div>
+              <% } %>
+
+              <% if (order.remarks) { %>
+                <div style="margin-top:8px;background:rgba(234,88,12,0.15);border:1px solid rgba(234,88,12,0.4);color:#fed7aa;padding:6px 10px;border-radius:6px;font-size:12.5px;font-weight:700;">
+                  Special Note: "<%= order.remarks %>"
+                </div>
+              <% } %>
+            </div>
           </div>
-          <span class="elapsed" data-elapsed style="font-weight:700;padding:3px 8px;border-radius:6px;font-size:12.5px;">0m</span>
-        </div>
-        <div class="ticket-lines" style="padding:14px;">
-          <div class="ticket-line">
-            <strong style="font-size:15px;"><%= order.item ? order.item.item_name : 'Item #' + order.item_id %></strong>
-            <span class="badge" style="background:#334155;color:#ffffff;font-size:13px;font-weight:800;padding:3px 8px;">x<%= order.quantity %></span>
-          </div>
-          <% if (order.variant) { %><div class="ticket-note" style="margin-top:4px;">Option: <strong><%= order.variant.name %></strong></div><% } %>
-          <% if (toppings) { %><div class="ticket-note" style="margin-top:2px;">Toppings: <%= toppings %></div><% } %>
-          <% if (order.remarks) { %><div class="ticket-note" style="color:#fdba74;font-weight:700;margin-top:4px;background:rgba(251,146,60,0.15);padding:4px 6px;border-radius:4px;">Note: "<%= order.remarks %>"</div><% } %>
-        </div>
-        <div class="ticket-foot" style="padding:10px 14px;background:rgba(15,23,42,0.4);display:flex;justify-content:space-between;align-items:center;">
-          <div class="ticket-actions" style="display:flex;gap:6px;">
-            <% if (canAdvance) { %>
-              <button type="button" class="order-action-btn" data-id="<%= order.id %>" data-action="<%= nextAction %>" style="font-weight:700;padding:8px 14px;">
+
+          <!-- TICKET FOOTER ACTIONS -->
+          <div class="ticket-foot" style="padding:12px 16px;background:rgba(15,23,42,0.4);border-top:1px solid #334155;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+            <div style="display:flex;gap:6px;flex:1;">
+              <button type="button" class="btn advance-ticket-btn"
+                      data-id="<%= order.id %>"
+                      data-source="<%= order._model %>"
+                      data-action="<%= nextAction %>"
+                      style="flex:1;padding:8px 12px;font-size:13px;font-weight:700;background:<%= isPrep ? '#16a34a' : 'var(--brand)' %>;border-color:<%= isPrep ? '#16a34a' : 'var(--brand)' %>;">
                 <%= nextLabel %>
               </button>
-            <% } %>
-            <% if (order.status !== 'cancelled') { %>
-              <button type="button" class="order-action-btn secondary" data-id="<%= order.id %>" data-action="cancelled" style="padding:8px 10px;">
-                Cancel
+              <button type="button" class="btn btn-secondary cancel-ticket-btn"
+                      data-id="<%= order.id %>"
+                      data-source="<%= order._model %>"
+                      data-action="cancelled"
+                      style="padding:8px 10px;font-size:12px;background:#334155;color:#f8fafc;border-color:#475569;"
+                      title="Cancel order item">
+                ✕
+              </button>
+            </div>
+
+            <% if (order.item) { %>
+              <button type="button" class="btn toggle-86-btn"
+                      data-item-id="<%= order.item.id %>"
+                      data-item-name="<%= order.item.item_name %>"
+                      style="padding:6px 8px;font-size:11px;font-weight:700;background:<%= order.item.sold_out ? '#16a34a' : '#be123c' %>;border:none;color:#fff;">
+                <%= order.item.sold_out ? 'Back in stock' : "86 Item" %>
               </button>
             <% } %>
           </div>
-          <% if (order.item) { %>
-            <button type="button" class="sold-out" data-item-id="<%= order.item.id %>" aria-label="Toggle sold out for <%= order.item.item_name %>" style="padding:6px 8px;font-size:11px;">
-              <%= order.item.sold_out ? 'Available' : '86 Item' %>
-            </button>
-          <% } %>
-        </div>
-      </article>
-    <% }) %>
-  </section>
-<% } %>
+        </article>
+      <% }) %>
+    </section>
+  <% } %>
+</div>
 
-<section class="card" style="margin-top:20px;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-    <h3 style="margin:0;font-size:16px;">Finished tickets today</h3>
-    <span class="badge" style="font-size:12px;"><%= finishedOrdersToday.count %> completed</span>
+<!-- TAB 2: CONSOLIDATED BATCH EXPO VIEW (Items total across all open tickets) -->
+<div id="tab-expo" class="kds-tab-content" style="display:none;">
+  <div class="card" style="background:#1e293b;border:1px solid #334155;color:#f8fafc;padding:20px;margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h3 style="margin:0 0 4px;color:#f8fafc;font-size:18px;">Consolidated Cooking Batches</h3>
+        <p style="margin:0;color:#94a3b8;font-size:13px;">Aggregate prep count of dishes needed right now across all active table tickets.</p>
+      </div>
+      <button type="button" id="start-all-cooking-btn" class="btn" style="background:#ea580c;border-color:#ea580c;font-weight:700;">
+        🔥 Start All Cooking
+      </button>
+    </div>
   </div>
-  <% if (!finishedOrdersToday.rows.length) { %>
-    <p style="color:var(--muted);text-align:center;padding:16px 0;">No finished tickets yet today.</p>
+
+  <% const itemKeys = Object.keys(itemTotals); %>
+  <% if (!itemKeys.length) { %>
+    <div class="card" style="text-align:center;padding:48px;background:#1e293b;border:1px solid #334155;color:#94a3b8;">
+      No batch items currently needed.
+    </div>
   <% } else { %>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px;">
-      <% finishedOrdersToday.rows.forEach((row) => { %>
-        <div class="item-row" style="background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:8px 12px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">
+      <% itemKeys.forEach(function(k) { %>
+        <% const bi = itemTotals[k]; %>
+        <div class="card" style="background:#1e293b;border:1.5px solid #334155;border-radius:12px;padding:18px;margin:0;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
           <div>
-            <strong style="color:var(--ink);"><%= row.table ? row.table.table_name : 'Unknown' %></strong>
-            <span style="color:var(--muted);margin-left:6px;font-size:13px;"><%= row.item ? row.item.item_name : 'Item #' + row.item_id %></span>
-            <span class="badge" style="font-size:11px;margin-left:4px;">x<%= row.quantity %></span>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+              <div>
+                <span class="badge" style="background:#0f172a;color:#38bdf8;font-size:11px;margin-bottom:4px;"><%= bi.category %></span>
+                <strong style="display:block;font-size:17px;color:#f8fafc;line-height:1.2;"><%= bi.name %></strong>
+                <% if (bi.variant) { %><span style="font-size:12.5px;color:#94a3b8;">(<%= bi.variant %>)</span><% } %>
+              </div>
+              <span class="badge" style="background:var(--brand);color:#ffffff;font-size:20px;font-weight:900;padding:6px 14px;border-radius:8px;">
+                <%= bi.totalQty %>
+              </span>
+            </div>
+
+            <div style="font-size:12.5px;color:#94a3b8;background:#0f172a;padding:8px 12px;border-radius:6px;margin-bottom:14px;">
+              Needed for: <strong style="color:#f8fafc;"><%= bi.tables.join(', ') %></strong>
+            </div>
           </div>
-          <span class="badge status-available" style="font-size:11px;"><%= statusLabel(row.status) %></span>
+
+          <div style="display:flex;gap:8px;">
+            <button type="button" class="btn batch-mark-ready-btn" data-ids="<%= bi.orderIds.join(',') %>" style="flex:1;padding:8px;font-size:12.5px;font-weight:700;background:#16a34a;border-color:#16a34a;">
+              ✓ Mark Ready (<%= bi.totalQty %>)
+            </button>
+            <button type="button" class="btn btn-secondary toggle-86-btn" data-item-id="<%= bi.id %>" data-item-name="<%= bi.name %>" style="padding:8px 10px;font-size:11.5px;background:#334155;color:#f8fafc;border-color:#475569;">
+              <%= bi.sold_out ? 'In Stock' : "86" %>
+            </button>
+          </div>
         </div>
       <% }) %>
     </div>
   <% } %>
-</section>
+</div>
+
+<!-- TAB 3: TABLE-GROUPED VIEW -->
+<div id="tab-tables" class="kds-tab-content" style="display:none;">
+  <% const tableNames = Object.keys(ticketsByTable); %>
+  <% if (!tableNames.length) { %>
+    <div class="card" style="text-align:center;padding:48px;background:#1e293b;border:1px solid #334155;color:#94a3b8;">
+      No active dining table orders.
+    </div>
+  <% } else { %>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">
+      <% tableNames.forEach(function(tbl) { %>
+        <%
+          const tblOrders = ticketsByTable[tbl];
+          const allDelivered = tblOrders.every(o => o.status === 'order_delivered');
+          const allIds = tblOrders.map(o => `${o._model}:${o.id}`).join(',');
+        %>
+        <div class="card" style="background:#1e293b;border:2px solid #334155;border-radius:12px;padding:18px;margin:0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #334155;padding-bottom:12px;margin-bottom:12px;">
+            <div>
+              <h3 style="margin:0;color:#f8fafc;font-size:18px;">Table <%= tbl %></h3>
+              <span style="font-size:12px;color:#94a3b8;"><%= tblOrders.length %> total line items</span>
+            </div>
+            <button type="button" class="btn batch-mark-ready-btn" data-ids="<%= allIds %>" style="padding:6px 12px;font-size:12px;font-weight:700;background:#16a34a;border-color:#16a34a;">
+              ✓ Bump Entire Table
+            </button>
+          </div>
+
+          <div style="display:grid;gap:8px;">
+            <% tblOrders.forEach(function(o) { %>
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:#0f172a;border-radius:6px;font-size:13px;color:#f8fafc;">
+                <div>
+                  <strong><%= o.quantity %>x</strong> <%= o.item ? o.item.item_name : ('Item #' + o.item_id) %>
+                  <% if (o.variant) { %><span style="color:#94a3b8;">(<%= o.variant.name %>)</span><% } %>
+                </div>
+                <span class="badge" style="font-size:11px;background:<%= o.status === 'preparing' ? '#ea580c' : '#334155' %>;color:#fff;">
+                  <%= statusLabel(o.status) %>
+                </span>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<!-- TAB 4: COMPLETED TICKETS HISTORY -->
+<div id="tab-history" class="kds-tab-content" style="display:none;">
+  <div class="card" style="background:#1e293b;border:1px solid #334155;padding:18px;color:#f8fafc;margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div>
+        <h3 style="margin:0;font-size:17px;color:#f8fafc;">Completed Tickets History</h3>
+        <span style="font-size:12.5px;color:#94a3b8;"><%= finishedOrdersToday.count %> items delivered today</span>
+      </div>
+      <button type="button" class="btn btn-secondary" onclick="location.reload()" style="background:#0f172a;border-color:#334155;color:#f8fafc;padding:6px 12px;font-size:12px;">
+        Refresh History
+      </button>
+    </div>
+  </div>
+
+  <% if (!finishedOrdersToday.rows.length) { %>
+    <div class="card" style="text-align:center;padding:40px;background:#1e293b;border:1px solid #334155;color:#94a3b8;">
+      No finished tickets recorded yet today.
+    </div>
+  <% } else { %>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;">
+      <% finishedOrdersToday.rows.forEach(function(row) { %>
+        <div class="card" style="margin:0;padding:12px 16px;background:#0f172a;border:1px solid #334155;color:#f8fafc;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:14px;font-weight:700;"><%= row.table ? row.table.table_name : 'Walk-In' %></div>
+            <div style="font-size:12.5px;color:#94a3b8;"><%= row.quantity %>x <%= row.item ? row.item.item_name : ('Item #' + row.item_id) %></div>
+          </div>
+          <span class="badge" style="background:#064e3b;color:#6ee7b7;font-size:11px;font-weight:700;">
+            ✓ Completed
+          </span>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<style>
+  /* KDS Color-Coded Urgency States */
+  .ticket.urgent-warn {
+    border-color: #fbbf24 !important;
+  }
+  .ticket.urgent-warn .elapsed {
+    background: #fbbf24 !important;
+    color: #78350f !important;
+  }
+  .ticket.urgent-danger {
+    border-color: #f87171 !important;
+    background: #2b171c !important;
+    animation: kdsPulse 2s infinite ease-in-out;
+  }
+  .ticket.urgent-danger .elapsed {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+  }
+  @keyframes kdsPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  }
+
+  .ticket-cooking {
+    border-color: #f97316 !important;
+  }
+
+  /* Fullscreen Mode helper */
+  body.kds-fullscreen .sidebar,
+  body.kds-fullscreen .topbar,
+  body.kds-fullscreen .app-footer {
+    display: none !important;
+  }
+  body.kds-fullscreen .content {
+    max-width: 100% !important;
+    padding: 12px !important;
+  }
+</style>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-  const updateOrderBaseUrl = '<%= station === "bar" ? "/kitchen-admin" : "/kitchen-admin/kitchen" %>/update-order';
-  const soldOutBaseUrl = '<%= station === "bar" ? "/kitchen-admin" : "/kitchen-admin/kitchen" %>/toggle-sold-out';
-  const categoryFilter = document.getElementById('station-category');
-  const tickets = [...document.querySelectorAll('.ticket')];
+  (function() {
+    const restaurantId = <%= restaurantId %>;
+    const updateBaseUrl = '<%= updateBaseUrl %>';
+    const tickets = [...document.querySelectorAll('.ticket')];
+    const toast = document.getElementById('kds-toast');
+    const toastText = document.getElementById('toast-text');
+    const toastIcon = document.getElementById('toast-icon');
 
-  // Web Audio chime for KDS ticket notification
-  let audioEnabled = true;
-  const audioBtn = document.getElementById('toggle-sound-btn');
-  if (audioBtn) {
-    audioBtn.addEventListener('click', () => {
-      audioEnabled = !audioEnabled;
-      audioBtn.textContent = audioEnabled ? '🔔 Audio Alert: ON' : '🔕 Audio Alert: OFF';
+    // Toast Alert Notification Helper
+    function showToast(message, isError = false) {
+      toastText.textContent = message;
+      toastIcon.textContent = isError ? '⚠️' : '✓';
+      toast.style.background = isError ? '#991b1b' : '#065f46';
+      toast.style.color = '#ffffff';
+      toast.style.display = 'flex';
+      setTimeout(() => { toast.style.display = 'none'; }, 2800);
+    }
+
+    // Web Audio Synthesizer for Kitchen Chime
+    let soundEnabled = true;
+    const soundBtn = document.getElementById('toggle-sound-btn');
+    soundBtn.addEventListener('click', () => {
+      soundEnabled = !soundEnabled;
+      soundBtn.textContent = soundEnabled ? '🔔 Audio: ON' : '🔕 Audio: OFF';
+      if (soundEnabled) playChime();
     });
-  }
 
-  function playKdsChime() {
-    if (!audioEnabled) return;
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.4);
-    } catch (e) {}
-  }
+    function playChime() {
+      if (!soundEnabled) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.14); // A5
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.45);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.45);
+      } catch (e) {}
+    }
 
-  function updateElapsed(ticket) {
-    const createdAt = Date.parse(ticket.dataset.createdAt);
-    const minutes = Math.max(0, Math.floor((Date.now() - createdAt) / 60000));
-    const badge = ticket.querySelector('[data-elapsed]');
-    badge.textContent = `${minutes}m`;
-    ticket.classList.toggle('urgent-warn', minutes >= 5 && minutes < 12);
-    ticket.classList.toggle('urgent-danger', minutes >= 12);
-  }
+    // Fullscreen Monitor Toggle
+    const fullBtn = document.getElementById('toggle-fullscreen-btn');
+    fullBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        document.body.classList.add('kds-fullscreen');
+        fullBtn.textContent = '✕ Exit Fullscreen';
+      } else {
+        document.exitFullscreen().catch(() => {});
+        document.body.classList.remove('kds-fullscreen');
+        fullBtn.textContent = '⛶ Fullscreen';
+      }
+    });
 
-  function applyCategoryFilter() {
-    const selected = categoryFilter.value;
-    tickets.forEach((ticket) => { ticket.hidden = selected !== 'all' && ticket.dataset.category !== selected; });
-  }
+    // Dynamic Elapsed Timer & Urgency Colors
+    function updateElapsed(ticket) {
+      const createdAt = Date.parse(ticket.dataset.createdAt);
+      if (isNaN(createdAt)) return;
+      const minutes = Math.max(0, Math.floor((Date.now() - createdAt) / 60000));
+      const badge = ticket.querySelector('[data-elapsed]');
+      if (badge) badge.textContent = `${minutes}m`;
 
-  tickets.forEach(updateElapsed);
-  setInterval(() => tickets.forEach(updateElapsed), 30000);
-  if (categoryFilter) categoryFilter.addEventListener('change', applyCategoryFilter);
+      ticket.classList.toggle('urgent-warn', minutes >= 5 && minutes < 12);
+      ticket.classList.toggle('urgent-danger', minutes >= 12);
+    }
 
-  document.querySelectorAll('.order-action-btn').forEach((button) => button.addEventListener('click', async () => {
-    button.disabled = true;
-    const response = await fetch(`${updateOrderBaseUrl}/${button.dataset.id}?action=${button.dataset.action}`);
-    if (!response.ok) window.alert('The ticket could not be updated.');
-    else location.reload();
-  }));
+    tickets.forEach(updateElapsed);
+    setInterval(() => {
+      document.querySelectorAll('.ticket').forEach(updateElapsed);
+    }, 10000);
 
-  document.querySelectorAll('.sold-out').forEach((button) => button.addEventListener('click', async () => {
-    button.disabled = true;
-    const response = await fetch(`${soldOutBaseUrl}/${button.dataset.itemId}`, { method: 'POST' });
-    if (!response.ok) window.alert('The item availability could not be updated.');
-    else location.reload();
-  }));
+    // Tab Switching
+    document.querySelectorAll('.kds-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.kds-tab-btn').forEach(b => {
+          b.classList.remove('active-tab');
+          b.style.background = '#1e293b';
+          b.style.color = '#f8fafc';
+          b.style.borderColor = '#334155';
+        });
+        btn.classList.add('active-tab');
+        btn.style.background = 'var(--brand)';
+        btn.style.color = '#ffffff';
+        btn.style.borderColor = 'var(--brand)';
 
-  const socket = io();
-  socket.emit('join-restaurant', <%= restaurantId %>);
-  socket.on('restaurant-update', () => {
-    playKdsChime();
-    location.reload();
-  });
+        const targetTabId = btn.dataset.tab;
+        document.querySelectorAll('.kds-tab-content').forEach(content => {
+          content.style.display = content.id === targetTabId ? 'block' : 'none';
+        });
+      });
+    });
+
+    // Category Filter
+    const catSelect = document.getElementById('station-category');
+    if (catSelect) {
+      catSelect.addEventListener('change', () => {
+        const val = catSelect.value;
+        document.querySelectorAll('.ticket').forEach(ticket => {
+          ticket.style.display = (val === 'all' || ticket.dataset.category === val) ? 'flex' : 'none';
+        });
+      });
+    }
+
+    // In-Place Ticket Bumping (Advance Cooking -> Ready)
+    document.querySelectorAll('.advance-ticket-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+        const source = btn.dataset.source;
+        const action = btn.dataset.action;
+        btn.disabled = true;
+        btn.textContent = 'Updating...';
+
+        try {
+          const res = await fetch(`${updateBaseUrl}/update-order/${id}?action=${action}&source=${source}`);
+          const data = await res.json();
+          if (res.ok && data.success) {
+            const ticket = document.getElementById(`ticket-${source}-${id}`);
+            if (action === 'order_delivered') {
+              // Smooth bump animation and removal
+              showToast('Ticket bumped & marked ready!');
+              if (ticket) {
+                ticket.style.transform = 'scale(0.9)';
+                ticket.style.opacity = '0';
+                setTimeout(() => { ticket.remove(); updateMetrics(); }, 250);
+              }
+            } else if (action === 'preparing') {
+              showToast('Cooking started!');
+              if (ticket) {
+                ticket.classList.add('ticket-cooking');
+                const statusPill = ticket.querySelector('.status-pill');
+                if (statusPill) {
+                  statusPill.textContent = '● Cooking';
+                  statusPill.style.background = '#ea580c';
+                }
+                btn.dataset.action = 'order_delivered';
+                btn.textContent = '✓ Mark Ready & Serve';
+                btn.style.background = '#16a34a';
+                btn.style.borderColor = '#16a34a';
+                btn.disabled = false;
+                updateMetrics();
+              }
+            }
+          } else {
+            btn.disabled = false;
+            alert(data.message || 'Error updating ticket.');
+          }
+        } catch (e) {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // Cancel Ticket Button
+    document.querySelectorAll('.cancel-ticket-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Cancel this kitchen order item?')) return;
+        const id = btn.dataset.id;
+        const source = btn.dataset.source;
+        btn.disabled = true;
+
+        try {
+          const res = await fetch(`${updateBaseUrl}/update-order/${id}?action=cancelled&source=${source}`);
+          if (res.ok) {
+            const ticket = document.getElementById(`ticket-${source}-${id}`);
+            if (ticket) {
+              ticket.style.opacity = '0';
+              setTimeout(() => { ticket.remove(); updateMetrics(); }, 250);
+            }
+            showToast('Item cancelled');
+          }
+        } catch (e) {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // Batch Mark Ready (Expo and Table tabs)
+    document.querySelectorAll('.batch-mark-ready-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const refs = btn.dataset.ids.split(',').map(ref => {
+          const [source, id] = ref.split(':');
+          return { source, id };
+        });
+        btn.disabled = true;
+        btn.textContent = 'Updating...';
+
+        try {
+          const responses = await Promise.all(refs.map(({ source, id }) =>
+            fetch(`${updateBaseUrl}/update-order/${id}?action=order_delivered&source=${source}`)
+          ));
+          if (responses.some(response => !response.ok)) throw new Error('Some tickets could not be updated.');
+          showToast('Batch items marked ready!');
+          setTimeout(() => location.reload(), 400);
+        } catch (e) {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // "Start All Cooking" shortcut
+    const startAllBtn = document.getElementById('start-all-cooking-btn');
+    if (startAllBtn) {
+      startAllBtn.addEventListener('click', async () => {
+        startAllBtn.disabled = true;
+        const pendingBtns = Array.from(document.querySelectorAll('.advance-ticket-btn')).filter(b => b.dataset.action === 'preparing');
+        if (!pendingBtns.length) {
+          showToast('No pending items to start.');
+          startAllBtn.disabled = false;
+          return;
+        }
+        startAllBtn.textContent = 'Starting all...';
+        await Promise.all(pendingBtns.map(b => fetch(`${updateBaseUrl}/update-order/${b.dataset.id}?action=preparing&source=${b.dataset.source}`)));
+        showToast('All items are now cooking!');
+        setTimeout(() => location.reload(), 400);
+      });
+    }
+
+    // Instant 86 / Sold-Out Toggle
+    document.querySelectorAll('.toggle-86-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const itemId = btn.dataset.itemId;
+        const name = btn.dataset.itemName;
+        btn.disabled = true;
+
+        try {
+          const res = await fetch(`${updateBaseUrl}/toggle-sold-out/${itemId}`, { method: 'POST' });
+          const data = await res.json();
+          btn.disabled = false;
+          if (res.ok && data.success) {
+            btn.textContent = data.sold_out ? 'Back in stock' : '86 Item';
+            btn.style.background = data.sold_out ? '#16a34a' : '#be123c';
+            showToast(data.sold_out ? `"${name}" is now marked 86'd!` : `"${name}" is back in stock!`);
+          }
+        } catch (e) {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    function updateMetrics() {
+      const allTickets = document.querySelectorAll('.ticket');
+      const cooking = document.querySelectorAll('.ticket.ticket-cooking').length;
+      const pending = allTickets.length - cooking;
+      const pendingEl = document.getElementById('kds-pending-count');
+      const cookingEl = document.getElementById('kds-cooking-count');
+      if (pendingEl) pendingEl.textContent = pending;
+      if (cookingEl) cookingEl.textContent = cooking;
+    }
+
+    // Real-Time Socket Connection
+    const socket = io();
+    socket.emit('join-restaurant', restaurantId);
+
+    socket.on('restaurant-update', (event) => {
+      playChime();
+      showToast('New ticket activity on station!');
+      setTimeout(() => location.reload(), 600);
+    });
+
+  })();
 </script>
-

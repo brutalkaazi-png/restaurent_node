@@ -1,4 +1,5 @@
 const sequelize = require('../config/database');
+const RecipeItem = require('./RecipeItem');
 
 const User = require('./User');
 const Category = require('./Category');
@@ -29,6 +30,13 @@ const StaffCall = require('./StaffCall');
  * Associations - each block below mirrors one Eloquent relationship from
  * the original app/Models/*.php files.
  * ---------------------------------------------------------------------- */
+
+// RecipeItem associations
+Item.hasMany(RecipeItem, { foreignKey: 'item_id', as: 'recipe_items' });
+RecipeItem.belongsTo(Item, { foreignKey: 'item_id', as: 'item' });
+RecipeItem.belongsTo(ItemVariant, { foreignKey: 'item_variant_id', as: 'variant' });
+RecipeItem.belongsTo(InventoryItem, { foreignKey: 'inventory_item_id', as: 'ingredient' });
+InventoryItem.hasMany(RecipeItem, { foreignKey: 'inventory_item_id', as: 'recipe_uses' });
 
 // User.php
 User.hasMany(Item, { foreignKey: 'user_id', as: 'items' });
@@ -163,4 +171,5 @@ module.exports = {
   InventoryItem,
   InventoryTransaction,
   StaffCall,
+  RecipeItem,
 };

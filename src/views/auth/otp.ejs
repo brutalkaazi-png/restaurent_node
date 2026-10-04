@@ -1,13 +1,23 @@
-<div class="card">
-  <h2>Verify your account</h2>
-  <p>Enter the OTP we sent to your email address.</p>
+<div class="card" style="max-width:440px;margin:40px auto;padding:28px;border:1px solid var(--line);box-shadow:var(--shadow-md);">
+  <div style="text-align:center;margin-bottom:18px;">
+    <div style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:var(--brand);color:#fff;font-size:20px;margin-bottom:8px;">🔒</div>
+    <h2 style="font-size:20px;margin:0 0 4px;">Verify Your Account</h2>
+    <p style="font-size:13px;color:var(--muted);margin:0;">Enter the OTP code for verification.</p>
+  </div>
+
   <% if (typeof message !== 'undefined' && message) { %>
-    <div class="message"><%= message %></div>
+    <div class="message" style="margin-bottom:14px;"><%= message %></div>
   <% } %>
+
   <form method="POST" action="/otp-store">
     <input type="hidden" name="id" value="<%= id %>">
-    <label>OTP code</label>
-    <input type="text" name="otp" required>
-    <button class="btn" type="submit">Verify</button>
+    <label for="otp-code">5-digit OTP Code</label>
+    <input type="text" id="otp-code" name="otp" required placeholder="00000" style="text-align:center;font-size:20px;letter-spacing:6px;font-weight:700;">
+    
+    <div style="background:#f8fafc;padding:10px;border-radius:6px;border:1px solid var(--line);font-size:12px;color:var(--muted);margin-bottom:14px;">
+      💡 <strong>Development Hint:</strong> You can use default code <code style="font-weight:bold;color:var(--brand);">00000</code> to verify immediately.
+    </div>
+
+    <button class="btn" type="submit" style="width:100%;padding:10px;font-weight:700;">Verify & Continue ↗</button>
   </form>
 </div>

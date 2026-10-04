@@ -8,6 +8,7 @@ const {
   Topping,
   RestaurantTable,
   TableCustomer,
+  TableCustomersPreorder,
   Order,
   OrderItem,
   MenuTemplate,
@@ -219,13 +220,13 @@ async function addTableMenu(req, res) {
   const tableId = req.body.table_id;
   const table = await RestaurantTable.findByPk(tableId, { include: [{ model: User, as: 'restaurant' }] });
   if (!table) return res.status(404).json({ success: false, error: 'Table not found' });
-  if (String(req.session.table_id) !== String(table.id) || req.session.customerContext?.restaurantId !== table.restaurant_id) {
+  if (String(req.session.table_id) !== String(table.id) || String(req.session.customerContext?.restaurantId) !== String(table.restaurant_id)) {
     return res.status(403).json({ success: false, error: 'Scan this table QR code before ordering.' });
   }
-  if (table.status === 'bill_requested' || table.status === 'billing') {
-    return res.status(403).json({ success: false, error: 'bill_requested' });
-  }
 
+  if (table.status === 'bill_requested' || table.status === 'billing') {
+    return res.status(403).json({ success: false, error: 'Bill already requested for this table. Please settle at the counter.' });
+  }
   const itemsToAdd = req.body.items || [];
   if (!itemsToAdd.length) {
     return res.status(400).json({ success: false, error: 'No items provided' });
@@ -233,6 +234,13 @@ async function addTableMenu(req, res) {
 
   for (const itemData of itemsToAdd) {
     const { item_id: itemId, variant_id: variantId, quantity, comment = '', toppings = [] } = itemData;
+    const parsedQuantity = Number(quantity);
+    if (!Number.isSafeInteger(parsedQuantity) || parsedQuantity < 1 || parsedQuantity > 99) {
+      return res.status(400).json({ success: false, error: 'Quantity must be a whole number from 1 to 99.' });
+    }
+    if (!Array.isArray(toppings)) {
+      return res.status(400).json({ success: false, error: 'Invalid item options.' });
+    }
     const item = await Item.findOne({
       where: {
         id: itemId,
@@ -245,8 +253,8 @@ async function addTableMenu(req, res) {
 
     let price = parseFloat(item.price);
     if (variantId) {
-      const variant = await ItemVariant.findByPk(variantId);
-      if (!variant || variant.item_id !== item.id) continue;
+      const variant = await ItemVariant.findOne({ where: { id: variantId, item_id: item.id } });
+      if (!variant) return res.status(400).json({ success: false, error: 'The selected size is not available for this item.' });
       price = parseFloat(variant.price);
     } else {
       // Discounts only apply to the item's own base price, same as the
@@ -280,19 +288,22 @@ async function addTableMenu(req, res) {
 
     const toppingDetails = [];
     if (toppings.length) {
-      const selectedToppings = await Topping.findAll({ where: { id: { [Op.in]: toppings } } });
+      const selectedToppings = await Topping.findAll({ where: { id: { [Op.in]: [...new Set(toppings.map(Number))] }, item_id: item.id } });
+      if (selectedToppings.length !== new Set(toppings.map(Number)).size) {
+        return res.status(400).json({ success: false, error: 'One or more selected extras are unavailable for this item.' });
+      }
       for (const topping of selectedToppings) {
         price += parseFloat(topping.price);
         toppingDetails.push({ id: topping.id, name: topping.name, price: topping.price });
       }
     }
 
-    if (quantity > 0) {
+    if (parsedQuantity > 0) {
       await TableCustomer.create({
         table_id: tableId,
         item_id: itemId,
         item_variant_id: variantId || null,
-        quantity,
+        quantity: parsedQuantity,
         price,
         status: 'add_to_cart',
         remarks: String(comment).trim(),
@@ -317,6 +328,19 @@ async function getTableCart(req, res) {
     where: { table_id: tableId, session_id: req.sessionID },
     include: [{ model: Item, as: 'item' }],
   });
+  const trackedTokens = (req.session.kitchenOrderTokens || {})[String(tableId)] || [];
+  if (trackedTokens.length) {
+    const preorders = await TableCustomersPreorder.findAll({
+      where: { table_id: tableId, token: { [Op.in]: trackedTokens } },
+      include: [{ model: Item, as: 'item' }],
+    });
+    for (const preorder of preorders) {
+      if (preorder.status === 'approved' && preorder.item) {
+        preorder.status = preorder.item.is_drink ? 'order_drink' : 'order_food';
+      }
+    }
+    myOrder.push(...preorders);
+  }
 
   const unconfirmedItemCount = myOrder
     .filter((o) => o.status === 'add_to_cart')
@@ -406,25 +430,44 @@ async function storeOrder(req, res) {
   if (!table || !table.restaurant) {
     return res.status(404).json({ success: false, message: 'Table not found.' });
   }
+  if (String(req.session.table_id) !== String(table.id) || String(req.session.customerContext?.restaurantId) !== String(table.restaurant_id)) {
+    return res.status(403).json({ success: false, message: 'Scan this table QR code before ordering.' });
+  }
   const restaurant = table.restaurant;
 
-  const unconfirmedItems = await TableCustomer.findAll({
-    where: { table_id: tableId, status: 'add_to_cart', session_id: sessionId },
-  });
+  const transaction = await sequelize.transaction();
+  let unconfirmedItems;
+  try {
+    unconfirmedItems = await TableCustomer.findAll({
+      where: { table_id: tableId, status: 'add_to_cart', session_id: sessionId },
+      include: [{ model: Item, as: 'item' }],
+      transaction,
+    });
 
-  if (!unconfirmedItems.length) {
-    return res.json({ success: false, message: 'No items to confirm.' });
-  }
+    if (!unconfirmedItems.length) {
+      await transaction.rollback();
+      return res.json({ success: false, message: 'No items to confirm.' });
+    }
 
-  for (const customerItem of unconfirmedItems) {
-    customerItem.status = 'confirmed';
-    customerItem.time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    await customerItem.save();
+    for (const customerItem of unconfirmedItems) {
+      customerItem.status = restaurant.pay_first ? 'confirmed' : customerItem.item?.is_drink ? 'order_drink' : 'order_food';
+      customerItem.time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      await customerItem.save({ transaction });
+    }
+    await transaction.commit();
+  } catch (error) {
+    await transaction.rollback();
+    throw error;
   }
 
   if (!restaurant.pay_first) {
-    await sendToKitchen(tableId);
     newOrderPlaced(restaurant.id);
+  } else if (table.table_token) {
+    const tokensByTable = req.session.kitchenOrderTokens || {};
+    const tableTokens = tokensByTable[String(table.id)] || [];
+    if (!tableTokens.includes(table.table_token)) tableTokens.push(table.table_token);
+    tokensByTable[String(table.id)] = tableTokens;
+    req.session.kitchenOrderTokens = tokensByTable;
   }
 
   req.session.cart = undefined;
@@ -574,21 +617,26 @@ async function requestBill(req, res) {
       include: [{ model: ItemVariant, as: 'variant' }],
     });
 
-    if (ordersToBill.length) {
-      const grandTotal = ordersToBill.reduce((sum, o) => sum + parseFloat(o.price) * o.quantity, 0);
+    if (!ordersToBill.length) {
+      cache.forget(lockKey);
+      return res.status(400).json({ success: false, error: 'No items to process for billing.' });
+    }
 
-      const userOrder = await Order.create({
+    const grandTotal = ordersToBill.reduce((sum, o) => sum + parseFloat(o.price) * o.quantity, 0);
+
+    const userOrder = await Order.create({
         res_id: table.restaurant_id,
+        branch_id: table.branch_id,
         name: table.table_name,
         qr_type: 'Table Based QR',
         table_id: table.id,
         total_cost: grandTotal,
         order_status: 'pending_approval',
         payment_mode: 'cod',
-      });
+    });
 
-      for (const order of ordersToBill) {
-        await OrderItem.create({
+    for (const order of ordersToBill) {
+      await OrderItem.create({
           order_id: userOrder.id,
           item_id: order.item_id,
           item_variant_id: order.item_variant_id,
@@ -598,8 +646,7 @@ async function requestBill(req, res) {
           total: parseFloat(order.price) * order.quantity,
           toppings: order.toppings,
           remarks: order.remarks,
-        });
-      }
+      });
     }
 
     await TableCustomer.update(
@@ -630,6 +677,7 @@ async function requestBill(req, res) {
   const grandTotal = ordersToBill.reduce((sum, o) => sum + parseFloat(o.price) * o.quantity, 0);
   const userOrder = await Order.create({
     res_id: table.restaurant_id,
+    branch_id: table.branch_id,
     name: table.table_name,
     qr_type: 'Table Based QR',
     table_id: table.id,
@@ -675,7 +723,7 @@ async function showBillRequestedPage(req, res) {
   const table = await RestaurantTable.findByPk(req.params.id, { include: [{ model: User, as: 'restaurant' }] });
   if (!table) return res.status(404).send('Not found');
   const restaurant = table.restaurant;
-  const statusToQuery = restaurant.pay_first ? 'payment_pending' : 'order_delivered';
+  const statusToQuery = restaurant.pay_first ? 'pending_approval' : 'payment_pending';
 
   const orderDetails = await TableCustomer.findAll({
     where: { table_id: table.id, status: statusToQuery },
@@ -767,6 +815,7 @@ async function completePaidOrder(req, res) {
     const userOrder = await Order.create(
       {
         res_id: table.restaurant_id,
+        branch_id: table.branch_id,
         name: table.table_name,
         qr_type: 'Table Based QR',
         table_id: table.id,

@@ -1,71 +1,144 @@
-<div class="card" style="max-width:560px;margin:32px auto;padding:32px 28px;box-shadow:var(--shadow-md);">
-  <div style="text-align:center;margin-bottom:24px;">
-    <div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:12px;background:var(--brand);color:#ffffff;font-size:24px;margin-bottom:12px;box-shadow:var(--shadow-brand);">✦</div>
-    <h2 style="font-size:24px;margin:0 0 6px;">Register Your Restaurant</h2>
-    <p style="margin:0;font-size:13.5px;color:var(--muted);">Set up your digital QR menus, online orders, and kitchen pass.</p>
+<div class="card" style="max-width:540px;margin:36px auto;padding:32px 28px;box-shadow:var(--shadow-md);border:1px solid var(--line);">
+  <!-- AUTH TOGGLE PILL / TABS -->
+  <div style="display:flex;background:var(--surface-subtle);padding:4px;border-radius:12px;margin-bottom:24px;border:1px solid var(--line);">
+    <a href="/login" class="btn btn-secondary" style="flex:1;text-align:center;border:none;background:transparent;color:var(--muted);font-weight:600;padding:9px;border-radius:8px;text-decoration:none;">
+      Sign In
+    </a>
+    <a href="/register" class="btn" style="flex:1;text-align:center;background:var(--brand);color:#ffffff;font-weight:700;padding:9px;border-radius:8px;text-decoration:none;box-shadow:var(--shadow-sm);">
+      Create Account
+    </a>
+  </div>
+
+  <div style="text-align:center;margin-bottom:22px;">
+    <div style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;background:var(--brand);color:#ffffff;font-size:22px;margin-bottom:10px;box-shadow:var(--shadow-brand);">✦</div>
+    <h2 style="font-size:22px;margin:0 0 4px;color:var(--ink);">Get Started with Tablely</h2>
+    <p style="margin:0;font-size:13px;color:var(--muted);">Create your restaurant workspace or customer ordering account.</p>
   </div>
 
   <% if (typeof errors !== 'undefined' && errors && errors.length) { %>
-    <div class="message" style="margin-bottom:16px;">
+    <div class="message" style="margin-bottom:16px;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;padding:12px 14px;border-radius:8px;font-size:13px;">
       <% errors.forEach(function(e){ %><div>• <%= e %></div><% }) %>
     </div>
   <% } %>
 
-  <form method="POST" action="/register/store" enctype="multipart/form-data">
-    <label>Restaurant / Business Name</label>
-    <input type="text" name="name" required placeholder="e.g. Bella Italia Trattoria">
-
-    <label>Custom URL Slug (optional)</label>
-    <input type="text" name="slug" placeholder="e.g. bella-italia">
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div>
-        <label>City / District</label>
-        <select name="city">
-          <% districts.forEach(function(d){ %>
-            <option value="<%= d.name %>"><%= d.name %></option>
-          <% }) %>
-        </select>
-      </div>
-      <div>
-        <label>Phone Number</label>
-        <input type="text" name="phone" placeholder="+1 (555) 000-0000">
+  <form method="POST" action="/register/store" id="register-form">
+    <!-- ACCOUNT TYPE SELECTOR -->
+    <div style="margin-bottom:16px;">
+      <label style="display:block;font-size:12.5px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:6px;">Account Type</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;" id="account-type-toggle">
+        <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:1.5px solid var(--brand);background:var(--brand-soft);border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;color:var(--brand-text);">
+          <input type="radio" name="user_type" value="R" checked style="margin:0;">
+          👑 Restaurant Owner
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--line);background:#ffffff;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;color:var(--ink-secondary);">
+          <input type="radio" name="user_type" value="C" style="margin:0;">
+          👤 Dining Customer
+        </label>
       </div>
     </div>
 
-    <label>Address</label>
-    <input type="text" name="address" placeholder="Street address, Suite">
-
-    <input type="hidden" name="latitude" value="">
-    <input type="hidden" name="longitude" value="">
-
-    <label>Owner Email Address</label>
-    <input type="email" name="email" required placeholder="owner@restaurant.com">
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <!-- RESTAURANT-SPECIFIC FIELDS -->
+    <div id="restaurant-fields">
       <div>
-        <label>Password</label>
-        <input type="password" name="password" required minlength="6" placeholder="At least 6 chars">
+        <label for="reg-name" id="lbl-name">Restaurant Name *</label>
+        <input type="text" id="reg-name" name="name" required placeholder="e.g. Bella Italia Trattoria">
       </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label for="reg-slug">URL Slug (Optional)</label>
+          <input type="text" id="reg-slug" name="slug" placeholder="e.g. bella-italia">
+        </div>
+        <div>
+          <label for="reg-city">City / District</label>
+          <select id="reg-city" name="city">
+            <% if (typeof districts !== 'undefined' && districts && districts.length) { %>
+              <% districts.forEach(function(d){ %>
+                <option value="<%= d.name %>"><%= d.name %></option>
+              <% }) %>
+            <% } else { %>
+              <option value="Downtown">Downtown</option>
+              <option value="Central">Central</option>
+              <option value="North District">North District</option>
+            <% } %>
+          </select>
+        </div>
+      </div>
+
       <div>
-        <label>Confirm Password</label>
-        <input type="password" name="password_confirmation" required minlength="6" placeholder="Repeat password">
+        <label for="reg-address">Street Address</label>
+        <input type="text" id="reg-address" name="address" placeholder="123 Culinary Ave, Suite 100">
       </div>
     </div>
 
-    <label>Account Type</label>
-    <select name="user_type">
-      <option value="R">Restaurant Owner (Full Management)</option>
-      <option value="C">Customer Account (Ordering Only)</option>
-    </select>
+    <!-- COMMON CREDENTIALS -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div>
+        <label for="reg-email">Email Address *</label>
+        <input type="email" id="reg-email" name="email" required placeholder="you@example.com">
+      </div>
+      <div>
+        <label for="reg-phone">Phone Number</label>
+        <input type="tel" id="reg-phone" name="phone" placeholder="+1 (555) 000-0000">
+      </div>
+    </div>
 
-    <input type="hidden" name="restaurant_type" value="">
-    <input type="hidden" name="remark" value="">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div>
+        <label for="reg-password">Password *</label>
+        <input type="password" id="reg-password" name="password" required minlength="6" placeholder="Min 6 characters">
+      </div>
+      <div>
+        <label for="reg-confirm">Confirm Password *</label>
+        <input type="password" id="reg-confirm" name="password_confirmation" required minlength="6" placeholder="Repeat password">
+      </div>
+    </div>
 
-    <button class="btn" type="submit" style="width:100%;margin-top:16px;padding:12px;font-size:15px;box-shadow:var(--shadow-brand);">Create Restaurant Account ↗</button>
+    <button class="btn" type="submit" id="btn-submit-register" style="width:100%;margin-top:10px;padding:12px;font-size:15px;box-shadow:var(--shadow-brand);">
+      Create Restaurant Account ↗
+    </button>
   </form>
 
-  <div style="text-align:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted);">
-    Already have an account? <a href="/login" style="color:var(--brand);font-weight:600;text-decoration:none;">Log in here</a>
+  <div style="text-align:center;margin-top:20px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:var(--muted);">
+    Already have an account? <a href="/login" style="color:var(--brand);font-weight:700;text-decoration:none;">Sign in here</a>
   </div>
 </div>
+
+<script>
+  // Dynamic role toggle logic
+  const typeRadios = document.querySelectorAll('input[name="user_type"]');
+  const restaurantFields = document.getElementById('restaurant-fields');
+  const submitBtn = document.getElementById('btn-submit-register');
+  const nameLabel = document.getElementById('lbl-name');
+  const nameInput = document.getElementById('reg-name');
+
+  typeRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      typeRadios.forEach(r => {
+        const parent = r.closest('label');
+        if (r.checked) {
+          parent.style.borderColor = 'var(--brand)';
+          parent.style.background = 'var(--brand-soft)';
+          parent.style.color = 'var(--brand-text)';
+          parent.style.fontWeight = '700';
+        } else {
+          parent.style.borderColor = 'var(--line)';
+          parent.style.background = '#ffffff';
+          parent.style.color = 'var(--ink-secondary)';
+          parent.style.fontWeight = '600';
+        }
+      });
+
+      if (radio.value === 'C') {
+        nameLabel.textContent = 'Your Full Name *';
+        nameInput.placeholder = 'e.g. Alex Johnson';
+        document.getElementById('reg-slug').required = false;
+        submitBtn.textContent = 'Create Customer Account ↗';
+      } else {
+        nameLabel.textContent = 'Restaurant Name *';
+        nameInput.placeholder = 'e.g. Bella Italia Trattoria';
+        submitBtn.textContent = 'Create Restaurant Account ↗';
+      }
+    });
+  });
+</script>

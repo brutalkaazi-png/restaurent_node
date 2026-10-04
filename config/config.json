@@ -2,8 +2,9 @@
   "development": {
     "username": "root",
     "password": null,
-    "database": "abc",
+    "database": "jpnresturant",
     "host": "127.0.0.1",
+    "port": 3308,
     "dialect": "mysql"
   },
   "test": {
@@ -11,6 +12,7 @@
     "password": null,
     "database": "database_test",
     "host": "127.0.0.1",
+    "port": 3308,
     "dialect": "mysql"
   },
   "production": {

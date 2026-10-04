@@ -1,0 +1,137 @@
+<%
+const currentRecipes = item.recipe_items || [];
+let totalRecipeCost = 0;
+currentRecipes.forEach(r => {
+  const cost = r.ingredient && r.ingredient.price_per_unit ? parseFloat(r.ingredient.price_per_unit) : 0;
+  totalRecipeCost += parseFloat(r.quantity || 0) * cost;
+});
+const itemPrice = item.price ? parseFloat(item.price) : (item.variants?.[0]?.price ? parseFloat(item.variants[0].price) : 0);
+const foodCostPct = itemPrice > 0 ? Math.round((totalRecipeCost / itemPrice) * 100) : 0;
+const grossMargin = Math.max(0, itemPrice - totalRecipeCost);
+const marginPct = itemPrice > 0 ? Math.round((grossMargin / itemPrice) * 100) : 0;
+%>
+
+<div class="card welcome-card" style="margin-bottom:20px;">
+  <div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      <span class="badge status-available">● Bill of Materials Editor</span>
+      <span style="font-size:12px;color:var(--muted);"><%= item.category ? item.category.category_name : 'Menu' %></span>
+    </div>
+    <h2>Recipe for <%= item.item_name %></h2>
+    <p>Configure the exact raw ingredients depleted whenever this dish is ordered.</p>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <a class="btn btn-secondary" href="/recipes">← Back to Recipes</a>
+  </div>
+</div>
+
+<!-- LIVE FOOD COST & MARGIN METRICS STRIP -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px;">
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;color:var(--muted);font-weight:700;">Menu Selling Price</span>
+    <div style="font-size:26px;font-weight:800;color:var(--ink);margin:4px 0;">$<%= itemPrice.toFixed(2) %></div>
+    <span style="font-size:12px;color:var(--muted);">Dish sale price</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;color:var(--muted);font-weight:700;">Total Ingredient Cost</span>
+    <div style="font-size:26px;font-weight:800;color:#be123c;margin:4px 0;">$<%= totalRecipeCost.toFixed(2) %></div>
+    <span style="font-size:12px;color:var(--muted);"><%= currentRecipes.length %> ingredients combined</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;color:var(--muted);font-weight:700;">Food Cost %</span>
+    <div style="font-size:26px;font-weight:800;color:var(--brand);margin:4px 0;"><%= foodCostPct %>%</div>
+    <span style="font-size:12px;color:var(--muted);"><%= foodCostPct <= 35 ? '✓ Healthy profit margin' : '⚠️ High food cost' %></span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;color:var(--muted);font-weight:700;">Gross Profit Margin</span>
+    <div style="font-size:26px;font-weight:800;color:#16a34a;margin:4px 0;">$<%= grossMargin.toFixed(2) %> (<%= marginPct %>%)</div>
+    <span style="font-size:12px;color:var(--muted);">Profit per serving</span>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1.3fr;gap:20px;align-items:start;">
+  <!-- LEFT: ADD INGREDIENT FORM -->
+  <div class="card" style="margin:0;box-shadow:var(--shadow-sm);border:1px solid var(--line);">
+    <h3 style="margin:0 0 14px;font-size:16px;color:var(--ink);">+ Add Ingredient to Recipe</h3>
+
+    <form method="POST" action="/recipes/<%= item.id %>" style="display:grid;gap:12px;">
+      <div>
+        <label style="display:block;font-size:12.5px;font-weight:700;margin-bottom:4px;color:var(--ink);">Select Raw Inventory Ingredient *</label>
+        <select name="inventory_item_id" required style="padding:10px 12px;border-radius:8px;">
+          <option value="">-- Choose ingredient from inventory --</option>
+          <% ingredients.forEach(ing => { %>
+            <option value="<%= ing.id %>">
+              <%= ing.name %> (Stock: <%= ing.quantity %> <%= ing.unit %><%= ing.price_per_unit ? ' &middot; $' + parseFloat(ing.price_per_unit).toFixed(2) + '/' + ing.unit : '' %>)
+            </option>
+          <% }) %>
+        </select>
+      </div>
+
+      <% if (item.variants && item.variants.length) { %>
+        <div>
+          <label style="display:block;font-size:12.5px;font-weight:700;margin-bottom:4px;color:var(--ink);">Applicable Size Variant (Optional)</label>
+          <select name="item_variant_id" style="padding:10px 12px;border-radius:8px;">
+            <option value="">Applies to all portions / base recipe</option>
+            <% item.variants.forEach(v => { %>
+              <option value="<%= v.id %>"><%= v.name %> ($<%= parseFloat(v.price).toFixed(2) %>)</option>
+            <% }) %>
+          </select>
+        </div>
+      <% } %>
+
+      <div>
+        <label style="display:block;font-size:12.5px;font-weight:700;margin-bottom:4px;color:var(--ink);">Portion Quantity Per Order *</label>
+        <input type="number" step="0.001" min="0.001" name="quantity" required placeholder="e.g. 0.150 for 150g or 1 for 1 pc" style="padding:10px 12px;border-radius:8px;">
+        <span style="font-size:11.5px;color:var(--muted);display:block;margin-top:2px;">Uses the ingredient's measurement unit (kg, L, pcs).</span>
+      </div>
+
+      <button type="submit" class="btn" style="margin-top:6px;padding:10px;font-weight:700;box-shadow:var(--shadow-brand);">
+        + Save Ingredient to Recipe
+      </button>
+    </form>
+  </div>
+
+  <!-- RIGHT: BILL OF MATERIALS INGREDIENTS LIST -->
+  <div class="card" style="margin:0;box-shadow:var(--shadow-sm);border:1px solid var(--line);">
+    <h3 style="margin:0 0 14px;font-size:16px;color:var(--ink);">Ingredients in this Recipe</h3>
+
+    <% if (!currentRecipes.length) { %>
+      <div style="text-align:center;padding:36px 16px;color:var(--muted);">
+        <div style="font-size:32px;margin-bottom:6px;">🧾</div>
+        <p style="margin:0;">No ingredients added yet. Add raw items from the form on the left.</p>
+      </div>
+    <% } else { %>
+      <div style="display:grid;gap:8px;">
+        <% currentRecipes.forEach(r => {
+          const ing = r.ingredient;
+          const unitCost = ing && ing.price_per_unit ? parseFloat(ing.price_per_unit) : 0;
+          const lineCost = parseFloat(r.quantity || 0) * unitCost;
+        %>
+          <div class="item-row" style="background:#f8fafc;padding:12px 14px;border-radius:8px;border:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <strong style="color:var(--ink);font-size:15px;"><%= ing ? ing.name : 'Ingredient' %></strong>
+              <% if (r.variant) { %>
+                <span class="badge" style="font-size:11px;background:#e0e7ff;color:#3730a3;"><%= r.variant.name %></span>
+              <% } %>
+              <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+                Deduction: <strong style="color:var(--brand);"><%= r.quantity %> <%= r.unit || (ing ? ing.unit : '') %></strong>
+                <% if (unitCost > 0) { %>
+                  &middot; Unit Cost: $<%= unitCost.toFixed(2) %> &middot; Portion Cost: <strong style="color:#be123c;">$<%= lineCost.toFixed(2) %></strong>
+                <% } %>
+              </div>
+            </div>
+
+            <form method="POST" action="/recipes/item/<%= r.id %>/delete" style="margin:0;" onsubmit="return confirm('Remove this ingredient from recipe?');">
+              <button type="submit" class="btn btn-secondary" style="padding:4px 8px;font-size:12px;color:#be123c;background:#fff1f2;border-color:#fecdd3;" title="Delete ingredient">
+                ✕
+              </button>
+            </form>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</div>

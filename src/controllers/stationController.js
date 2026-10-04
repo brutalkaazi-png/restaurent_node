@@ -81,6 +81,7 @@ function createStationController(station) {
         id: order.id,
         table_name: order.table ? order.table.table_name : null,
         variant: order.variant,
+        source: order._model,
         toppings: order.toppings,
         remarks: order.remarks,
         quantity: order.quantity,
@@ -147,13 +148,20 @@ function createStationController(station) {
       return res.status(400).json({ success: false, message: 'Invalid status.' });
     }
 
-    let row = await TableCustomer.findOne({
-      where: { id: req.params.id },
-      include: [{ association: 'table', where: { restaurant_id: restaurantId, branch_id: req.branchId } }],
-    });
-    let isPreorder = false;
+    const source = req.query.source;
+    if (source && !['standard', 'preorder'].includes(source)) {
+      return res.status(400).json({ success: false, message: 'Invalid ticket source.' });
+    }
 
-    if (!row) {
+    let row;
+    let isPreorder = source === 'preorder';
+    if (source !== 'preorder') {
+      row = await TableCustomer.findOne({
+        where: { id: req.params.id },
+        include: [{ association: 'table', where: { restaurant_id: restaurantId, branch_id: req.branchId } }],
+      });
+    }
+    if (!row && source !== 'standard') {
       row = await TableCustomersPreorder.findOne({
         where: { id: req.params.id },
         include: [{ association: 'table', where: { restaurant_id: restaurantId, branch_id: req.branchId } }],

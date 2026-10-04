@@ -52,47 +52,155 @@ async function edit(req, res) {
   return res.render('res/table/create', { table });
 }
 
-// POST /tables  (upsert - same pattern as the Laravel store())
+// POST /tables  (upsert - supports standard and AJAX modal submissions)
+// POST /tables  (upsert - supports standard and AJAX modal submissions)
 async function store(req, res) {
-  const id = req.body.id;
-  const table = id
-    ? await RestaurantTable.findOne({ where: { id, restaurant_id: req.tenantId, branch_id: req.branchId } })
-    : RestaurantTable.build({ restaurant_id: req.tenantId, branch_id: req.branchId });
-  if (!table) return res.status(404).send('Table not found');
+  try {
+    const id = req.body.id;
+    const restaurantId = req.currentUser ? req.currentUser.id : req.tenantId;
+    const branchId = req.branchId || null;
 
-  const rawSlug = req.body.slug || req.body.name;
-  let slug = sanitizeString(rawSlug);
-  const existingSlugs = (
-    await RestaurantTable.findAll({
-      where: { restaurant_id: req.tenantId, branch_id: req.branchId, table_slug: { [Op.like]: `%${slug}%` } },
-      attributes: ['table_slug'],
-    })
-  ).map((t) => t.table_slug);
+    const tableWhere = { restaurant_id: restaurantId };
+    if (id) tableWhere.id = id;
 
-  if (slug !== table.table_slug) {
-    let i = 2;
-    while (existingSlugs.includes(slug)) {
-      slug = `${slug}-${i}`;
-      i++;
+    const table = id
+      ? await RestaurantTable.findOne({ where: tableWhere })
+      : RestaurantTable.build({ restaurant_id: restaurantId, branch_id: branchId });
+
+    if (!table) {
+      if (req.xhr || req.headers.accept?.includes('application/json')) {
+        return res.status(404).json({ success: false, message: 'Table not found.' });
+      }
+      return res.status(404).send('Table not found');
     }
+
+    const rawSlug = req.body.slug || req.body.name;
+    let slug = sanitizeString(rawSlug);
+    const existingSlugs = (
+      await RestaurantTable.findAll({
+        where: {
+          restaurant_id: restaurantId,
+          table_slug: { [Op.like]: `%${slug}%` },
+          ...(id ? { id: { [Op.ne]: id } } : {}),
+        },
+        attributes: ['table_slug'],
+      })
+    ).map((t) => t.table_slug);
+
+    if (slug !== table.table_slug) {
+      let i = 2;
+      while (existingSlugs.includes(slug)) {
+        slug = `${slug}-${i}`;
+        i++;
+      }
+    }
+
+    table.restaurant_id = restaurantId;
+    if (branchId) table.branch_id = branchId;
+    table.table_name = req.body.name.trim();
+    table.table_slug = slug;
+    if (!table.status) table.status = 'available';
+    await table.save();
+
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.json({ success: true, table });
+    }
+    return res.redirect('/tables');
+  } catch (error) {
+    console.error('Table save error:', error);
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+    return res.status(500).send('Error saving table');
   }
-
-  table.restaurant_id = req.tenantId;
-  table.branch_id = req.branchId;
-  table.table_name = req.body.name;
-  table.table_slug = slug;
-  if (!table.status) table.status = 'available';
-  await table.save();
-
-  return res.redirect('/tables');
 }
-
-// POST /tables/:id/delete
+// POST /tables/:id/delete (supports AJAX & traditional form post)
 async function destroy(req, res) {
-  const table = await RestaurantTable.findOne({ where: { id: req.params.id, restaurant_id: req.tenantId, branch_id: req.branchId } });
-  if (table) await table.destroy();
-  return res.redirect('/tables');
+  try {
+    const table = await RestaurantTable.findOne({
+      where: { id: req.params.id, restaurant_id: req.tenantId, branch_id: req.branchId },
+    });
+    if (table) {
+      const { TableCustomer } = require('../models');
+      await TableCustomer.destroy({ where: { table_id: table.id } });
+      await table.destroy();
+    }
+
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.json({ success: true });
+    }
+    return res.redirect('/tables');
+  } catch (error) {
+    console.error('Table delete error:', error);
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.status(500).json({ success: false, message: 'Could not delete table.' });
+    }
+    return res.redirect('/tables');
+  }
 }
+
+// POST /tables/:id/reset (resets table to available, clears token, cart, and payment locks)
+async function resetTable(req, res) {
+  try {
+    const tableId = req.params.id;
+
+    // Direct find by primary key (id)
+    const table = await RestaurantTable.findByPk(tableId);
+    if (!table) {
+      if (req.xhr || req.headers.accept?.includes('application/json')) {
+        return res.status(404).json({ success: false, message: 'Table not found.' });
+      }
+      return res.redirect('/tables');
+    }
+
+    const { sequelize, TableCustomer, TableCustomersPreorder } = require('../models');
+
+    // 1. Clear cart rows for this table
+    try {
+      await TableCustomer.destroy({ where: { table_id: tableId } });
+      await TableCustomersPreorder.destroy({ where: { table_id: tableId } });
+    } catch (e) {
+      console.warn('TableCustomer delete notice:', e.message);
+    }
+
+    // 2. Set table to available and null out tokens
+    table.status = 'available';
+    table.table_token = null;
+    table.owner_session_id = null;
+    await table.save();
+
+    // 3. Clear cache lock
+    try {
+      const cache = require('../utils/cacheStore');
+      cache.forget(`payment_lock_table_${tableId}`);
+    } catch (e) {}
+
+    // 4. Notify sockets
+    try {
+      const { notifyRestaurant } = require('../utils/events');
+      notifyRestaurant(table.restaurant_id, { reason: 'status-change', tableId });
+    } catch (e) {}
+
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.json({
+        success: true,
+        message: `${table.table_name} is now available!`,
+        table,
+      });
+    }
+    return res.redirect('/tables');
+  } catch (error) {
+    console.error('Reset Table Error:', error);
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error resetting table.',
+      });
+    }
+    return res.redirect('/tables');
+  }
+}
+
 
 // GET /tables/:id/qr-data
 async function getQrData(req, res) {
@@ -196,6 +304,7 @@ module.exports = {
   edit,
   store,
   destroy,
+  resetTable,
   getQrData,
   downloadQr,
   renderPublicQr,

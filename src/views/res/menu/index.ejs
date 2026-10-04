@@ -1,62 +1,551 @@
+<%
+function mediaUrl(path) {
+  if (!path) return '';
+  return path.startsWith('assets/') ? '/' + path : '/uploads/' + path;
+}
+
+const totalItems = menus.length;
+const soldOutItems = menus.filter(m => m.sold_out).length;
+const availableItems = totalItems - soldOutItems;
+const drinksCount = menus.filter(m => m.is_drink).length;
+const foodCount = totalItems - drinksCount;
+const currencySymbol = setting.currency || '$';
+%>
+
+<!-- HEADER & ACTIONS -->
 <div class="card welcome-card" style="margin-bottom:20px;">
   <div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-      <span class="badge status-available">● Menu Catalog</span>
-      <span style="font-size:12px;color:var(--muted);"><%= menus.length %> items total</span>
+      <span class="badge status-available">● Menu Catalog & Recipes</span>
+      <span style="font-size:12px;color:var(--muted);"><%= totalItems %> Total Dishes</span>
     </div>
-    <h2>Menu Items</h2>
-    <p>Manage dishes, prices, beverage routing, variants, and live 86/sold-out status.</p>
+    <h2>Menu Catalog & Dishes</h2>
+    <p>Manage recipes, kitchen/bar destination routing, size variations, and live 86 (sold-out) availability.</p>
   </div>
-  <a class="btn" href="/menus/create">+ Add menu item</a>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <a class="btn btn-secondary" href="/categories" style="display:flex;align-items:center;gap:6px;">
+      <span>◫</span> Manage Courses
+    </a>
+    <a class="btn" href="/menus/create" id="btn-create-menu" style="box-shadow:var(--shadow-brand);display:flex;align-items:center;gap:6px;">
+      <span>+</span> Add Menu Item
+    </a>
+  </div>
 </div>
 
-<div class="card" style="margin-bottom:16px;padding:14px 20px;">
-  <form method="GET" action="/menus" style="display:flex;align-items:center;gap:12px;margin:0;flex-wrap:wrap;">
-    <label style="margin:0;font-size:13px;font-weight:600;color:var(--muted);">Filter Course:</label>
-    <select name="category_id" onchange="this.form.submit()" style="margin:0;max-width:240px;">
-      <option value="">All categories</option>
-      <% categories.forEach(function(c) { %>
-        <option value="<%= c.id %>" <%= String(selectedCategoryId) === String(c.id) ? 'selected' : '' %>><%= c.category_name %></option>
-      <% }) %>
-    </select>
-  </form>
+<!-- TOAST NOTIFICATION -->
+<div id="menu-toast" style="display:none;position:fixed;top:24px;right:24px;z-index:99999;padding:12px 20px;border-radius:10px;box-shadow:var(--shadow-xl);font-size:13.5px;font-weight:700;align-items:center;gap:10px;">
+  <span id="toast-icon">✓</span>
+  <span id="toast-text"></span>
 </div>
 
+<!-- 4 KPI SUMMARY CARDS -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin-bottom:20px;">
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Catalog Size</span>
+    <div style="font-size:28px;font-weight:800;color:var(--ink);margin:6px 0 2px;"><%= totalItems %></div>
+    <span style="font-size:12px;color:var(--muted);">Total dishes & drinks</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Hot Kitchen Food</span>
+    <div style="font-size:28px;font-weight:800;color:var(--brand);margin:6px 0 2px;"><%= foodCount %></div>
+    <span style="font-size:12px;color:var(--muted);">Routed to kitchen line</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid var(--line);">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);font-weight:700;">Bar & Beverages</span>
+    <div style="font-size:28px;font-weight:800;color:#2563eb;margin:6px 0 2px;"><%= drinksCount %></div>
+    <span style="font-size:12px;color:var(--muted);">Routed to bar station</span>
+  </div>
+
+  <div class="card" style="margin:0;border:1px solid <%= soldOutItems > 0 ? '#fecaca' : 'var(--line)' %>;background:<%= soldOutItems > 0 ? '#fef2f2' : '#fff' %>;">
+    <span style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;color:<%= soldOutItems > 0 ? '#991b1b' : 'var(--muted)' %>;font-weight:700;">86 / Sold Out</span>
+    <div style="font-size:28px;font-weight:800;color:<%= soldOutItems > 0 ? '#dc2626' : '#16a34a' %>;margin:6px 0 2px;"><%= soldOutItems %></div>
+    <span style="font-size:12px;color:<%= soldOutItems > 0 ? '#991b1b' : 'var(--muted)' %>;"><%= soldOutItems > 0 ? 'Unavailable to order' : 'All dishes in stock' %></span>
+  </div>
+</div>
+
+<!-- SEARCH & MULTI-FILTER TOOLBAR -->
+<div class="card" style="margin-bottom:20px;padding:16px 20px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">
+    <!-- Text Search input -->
+    <div style="position:relative;flex:1;min-width:240px;">
+      <input type="text" id="menu-search-input" placeholder="Search dishes, drinks, ingredients, or descriptions..." style="margin:0;padding:10px 14px 10px 38px;border-radius:8px;border:1px solid var(--line-strong);">
+      <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;">🔍</span>
+    </div>
+
+    <!-- Category Dropdown Filter -->
+    <div style="display:flex;align-items:center;gap:8px;">
+      <label for="filter-category-select" style="margin:0;font-size:12.5px;font-weight:700;color:var(--muted);text-transform:uppercase;">Course:</label>
+      <select id="filter-category-select" style="margin:0;padding:8px 12px;border-radius:8px;border:1px solid var(--line-strong);font-size:13px;background:#fff;min-width:160px;">
+        <option value="all">All Categories</option>
+        <% categories.forEach(function(c) { %>
+          <option value="<%= c.id %>" <%= String(selectedCategoryId) === String(c.id) ? 'selected' : '' %>>
+            <%= c.category_name %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+
+    <!-- Station & Status Filter Chips -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-secondary menu-filter-chip active-chip" data-filter="all" style="padding:6px 12px;font-size:12px;background:var(--brand);color:#fff;border-color:var(--brand);">All (<%= totalItems %>)</button>
+      <button type="button" class="btn btn-secondary menu-filter-chip" data-filter="food" style="padding:6px 12px;font-size:12px;">🍳 Food (<%= foodCount %>)</button>
+      <button type="button" class="btn btn-secondary menu-filter-chip" data-filter="drinks" style="padding:6px 12px;font-size:12px;">🍸 Drinks (<%= drinksCount %>)</button>
+      <button type="button" class="btn btn-secondary menu-filter-chip" data-filter="soldout" style="padding:6px 12px;font-size:12px;">⚠️ 86 / Sold Out (<%= soldOutItems %>)</button>
+      <button type="button" class="btn btn-secondary menu-filter-chip" data-filter="available" style="padding:6px 12px;font-size:12px;">✓ In Stock (<%= availableItems %>)</button>
+    </div>
+  </div>
+</div>
+
+<!-- DISH CATALOG GRID -->
 <% if (!menus.length) { %>
-  <div class="card" style="text-align:center;padding:48px 20px;">
-    <div style="font-size:32px;margin-bottom:8px;">🍲</div>
+  <div class="card" style="text-align:center;padding:56px 20px;" role="status">
+    <div style="font-size:42px;margin-bottom:12px;">🍲</div>
     <h3 style="margin:0 0 6px;">No menu items found</h3>
-    <p style="color:var(--muted);margin:0 0 16px;">Get started by adding your first appetizer, main course, or drink.</p>
-    <a class="btn" href="/menus/create">+ Add First Item</a>
+    <p style="color:var(--muted);margin:0 0 18px;">Get started by adding your first appetizer, main course, side, or beverage.</p>
+    <a class="btn" href="/menus/create">+ Add First Menu Item</a>
   </div>
 <% } else { %>
-  <div style="display:grid;gap:10px;">
-    <% menus.forEach(function(item) { %>
-      <div class="card" style="margin:0;padding:16px 20px;">
-        <div class="item-row">
-          <div>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
-              <strong style="font-size:16px;color:var(--ink);"><%= item.item_name %></strong>
-              <% if (item.is_drink) { %><span class="badge" style="background:#eff6ff;color:#1d4ed8;">Drink / Bar</span><% } %>
-              <% if (item.sold_out) { %><span class="badge status-sold-out">Sold out</span><% } else { %><span class="badge status-available">Available</span><% } %>
+  <div id="menu-items-container" style="display:grid;gap:12px;">
+    <% menus.forEach(function(item, index) { %>
+      <%
+        const isDrink = item.is_drink;
+        const isSoldOut = item.sold_out;
+        const catName = item.category ? item.category.category_name : 'Uncategorized';
+        const variantsCount = item.variants ? item.variants.length : 0;
+        const toppingsCount = item.toppings ? item.toppings.length : 0;
+
+        // Calculate variant pricing range if configured with variants
+        let priceDisplay = '';
+        if (item.has_variants && variantsCount > 0) {
+          const prices = item.variants.map(v => parseFloat(v.price));
+          const minPrice = Math.min(...prices);
+          const maxPrice = Math.max(...prices);
+          if (minPrice === maxPrice) {
+            priceDisplay = currencySymbol + minPrice.toFixed(2);
+          } else {
+            priceDisplay = `${currencySymbol}${minPrice.toFixed(2)} – ${currencySymbol}${maxPrice.toFixed(2)}`;
+          }
+        } else {
+          priceDisplay = currencySymbol + parseFloat(item.price || 0).toFixed(2);
+        }
+      %>
+      <div class="card menu-item-card <%= isSoldOut ? 'is-sold-out' : '' %>"
+        draggable="true"
+        data-id="<%= item.id %>"
+        data-order="<%= item.item_order || (index + 1) %>"
+        data-name="<%= (item.item_name || '').toLowerCase() %>"
+        data-desc="<%= (item.item_description || '').toLowerCase() %>"
+        data-category-id="<%= item.item_category || '' %>"
+        data-is-drink="<%= isDrink ? 'true' : 'false' %>"
+        data-sold-out="<%= isSoldOut ? 'true' : 'false' %>"
+        style="margin:0;padding:16px 20px;border:1px solid var(--line);box-shadow:var(--shadow-xs);transition:all 0.15s ease;">
+        
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+          <!-- LEFT: DRAG HANDLE, PHOTO, AND DETAILS -->
+          <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:280px;">
+            <!-- Drag Handle -->
+            <div class="drag-handle" title="Drag to reorder" style="cursor:grab;color:var(--subtle);padding:6px 4px;font-size:18px;user-select:none;touch-action:none;">
+              ⋮⋮
             </div>
-            <div style="font-size:14px;color:var(--muted);font-weight:600;">
-              <%= item.has_variants ? 'Configured with variants' : (setting.currency || '$') + parseFloat(item.price || 0).toFixed(2) %>
+
+            <!-- Position Badge -->
+            <span class="badge order-badge" style="background:#f1f5f9;color:var(--muted);font-size:11px;min-width:24px;text-align:center;">
+              #<%= index + 1 %>
+            </span>
+
+            <!-- Food Thumbnail -->
+            <div style="width:60px;height:60px;border-radius:10px;background:#f8fafc;border:1px solid var(--line);overflow:hidden;flex-shrink:0;display:grid;place-items:center;position:relative;">
+              <% if (item.item_image) { %>
+                <img src="<%= mediaUrl(item.item_image) %>" alt="<%= item.item_name %>" style="width:100%;height:100%;object-fit:cover;">
+              <% } else { %>
+                <span style="font-size:22px;"><%= isDrink ? '🍹' : '🍽️' %></span>
+              <% } %>
+              <% if (isSoldOut) { %>
+                <div style="position:absolute;inset:0;background:rgba(239,68,68,0.7);color:#fff;font-size:10px;font-weight:900;display:grid;place-items:center;letter-spacing:0.04em;">
+                  86'D
+                </div>
+              <% } %>
+            </div>
+
+            <!-- Copy Details -->
+            <div style="min-width:0;flex:1;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px;">
+                <strong class="item-name-text" style="font-size:16.5px;color:var(--ink);"><%= item.item_name %></strong>
+                
+                <!-- Category Badge -->
+                <span class="badge" style="background:#f1f5f9;color:var(--ink-secondary);font-size:11px;">
+                  <%= catName %>
+                </span>
+
+                <!-- Destination Station Badge -->
+                <% if (isDrink) { %>
+                  <span class="badge" style="background:#eff6ff;color:#1e40af;font-size:11px;font-weight:700;">🍸 Bar Station</span>
+                <% } else { %>
+                  <span class="badge" style="background:#fff7ed;color:#9a3412;font-size:11px;font-weight:700;">🍳 Kitchen Pass</span>
+                <% } %>
+
+                <!-- Options / Add-ons badge -->
+                <% if (variantsCount > 0) { %>
+                  <span class="badge" style="background:#fdf2f8;color:#9d174d;font-size:11px;"><%= variantsCount %> Sizes/Variants</span>
+                <% } %>
+                <% if (toppingsCount > 0) { %>
+                  <span class="badge" style="background:#ecfdf5;color:#065f46;font-size:11px;"><%= toppingsCount %> Toppings</span>
+                <% } %>
+              </div>
+
+              <!-- Price & Description -->
+              <div style="display:flex;align-items:center;gap:12px;margin-top:2px;">
+                <span class="item-price-tag" style="font-size:15px;font-weight:800;color:var(--brand);">
+                  <%= priceDisplay %>
+                </span>
+                <% if (item.item_description) { %>
+                  <span style="font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:480px;">
+                    &middot; <%= item.item_description %>
+                  </span>
+                <% } %>
+              </div>
             </div>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <a class="btn btn-secondary" href="/menus/<%= item.id %>/edit" style="padding:6px 14px;font-size:13px;">Edit</a>
-            <form method="POST" action="/menus/<%= item.id %>/toggle-sold-out" style="display:inline;margin:0;">
-              <button type="submit" class="btn <%= item.sold_out ? '' : 'btn-secondary' %>" style="padding:6px 14px;font-size:13px;">
-                <%= item.sold_out ? '✓ Mark available' : '86 Item' %>
-              </button>
-            </form>
-            <form method="POST" action="/menus/<%= item.id %>/delete" style="display:inline;margin:0;" onsubmit="return confirm('Delete this item?');">
-              <button type="submit" class="btn btn-secondary" style="padding:6px 14px;font-size:13px;color:#be123c;">Delete</button>
-            </form>
+
+          <!-- RIGHT: STEPPER, 86 TOGGLE, AND ACTIONS -->
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <!-- Stepper Buttons for Mobile & Accessibility -->
+            <div style="display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-right:4px;">
+              <button type="button" class="stepper-btn move-up-btn" title="Move item up" style="border:none;background:#fff;padding:6px 10px;cursor:pointer;color:var(--ink);font-size:11px;border-right:1px solid var(--line);">▲</button>
+              <button type="button" class="stepper-btn move-down-btn" title="Move item down" style="border:none;background:#fff;padding:6px 10px;cursor:pointer;color:var(--ink);font-size:11px;">▼</button>
+            </div>
+
+            <!-- Instant Live 86 / Sold-Out Toggle -->
+            <button type="button" class="btn toggle-sold-btn <%= isSoldOut ? 'btn-danger' : 'btn-secondary' %>"
+              data-id="<%= item.id %>"
+              data-name="<%= item.item_name %>"
+              style="padding:6px 14px;font-size:12.5px;min-width:125px;font-weight:700;">
+              <%= isSoldOut ? '⚠️ 86 (Sold out)' : '✓ Available' %>
+            </button>
+
+            <!-- Edit Button -->
+            <a class="btn btn-secondary" href="/menus/<%= item.id %>/edit" style="padding:6px 12px;font-size:12.5px;" title="Edit dish details, prices, or variants">
+              ✏️ Edit
+            </a>
+
+            <!-- Delete Button -->
+            <button type="button" class="btn btn-secondary delete-menu-btn"
+              data-id="<%= item.id %>"
+              data-name="<%= item.item_name %>"
+              style="padding:6px 12px;font-size:12.5px;color:#be123c;border-color:#fecdd3;background:#fff1f2;"
+              title="Delete dish from menu">
+              🗑️
+            </button>
           </div>
         </div>
       </div>
     <% }) %>
   </div>
 <% } %>
+
+<style>
+  /* Sold-out visual accent */
+  .menu-item-card.is-sold-out {
+    background: #fefefe;
+    border-color: #fecaca !important;
+  }
+  .menu-item-card.is-sold-out .item-name-text {
+    color: #475569;
+  }
+
+  /* Drag & Drop */
+  .menu-item-card.dragging {
+    opacity: 0.45;
+    transform: scale(0.99);
+    border-color: var(--brand) !important;
+  }
+  .menu-item-card.drag-over {
+    border-top: 3px solid var(--brand) !important;
+  }
+
+  /* Stepper */
+  .stepper-btn:hover {
+    background: var(--surface-subtle) !important;
+    color: var(--brand) !important;
+  }
+</style>
+
+<script>
+  (function() {
+    const list = document.getElementById('menu-items-container');
+    const toast = document.getElementById('menu-toast');
+    const toastText = document.getElementById('toast-text');
+    const toastIcon = document.getElementById('toast-icon');
+
+    // Toast Alert Helper
+    function showToast(message, isError = false) {
+      toastText.textContent = message;
+      toastIcon.textContent = isError ? '⚠️' : '✓';
+      toast.style.background = isError ? '#fef2f2' : '#ecfdf5';
+      toast.style.color = isError ? '#991b1b' : '#065f46';
+      toast.style.border = isError ? '1px solid #fecaca' : '1px solid #a7f3d0';
+      toast.style.display = 'flex';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3000);
+    }
+
+    // Live AJAX 86 (Sold-Out) Toggle
+    document.querySelectorAll('.toggle-sold-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+        btn.disabled = true;
+
+        try {
+          const response = await fetch(`/menus/${id}/toggle-sold-out`, {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json',
+              'Content-Type': 'application/json',
+            }
+          });
+
+          const data = await response.json();
+          btn.disabled = false;
+
+          if (response.ok && data.success) {
+            const card = btn.closest('.menu-item-card');
+            card.dataset.soldOut = data.sold_out ? 'true' : 'false';
+
+            if (data.sold_out) {
+              card.classList.add('is-sold-out');
+              btn.classList.remove('btn-secondary');
+              btn.classList.add('btn-danger');
+              btn.textContent = '⚠️ 86 (Sold out)';
+              showToast(`"${name}" is now marked 86 / Sold Out`);
+            } else {
+              card.classList.remove('is-sold-out');
+              btn.classList.remove('btn-danger');
+              btn.classList.add('btn-secondary');
+              btn.textContent = '✓ Available';
+              showToast(`"${name}" is now back in stock!`);
+            }
+          } else {
+            alert(data.message || 'Could not update item availability.');
+          }
+        } catch (err) {
+          btn.disabled = false;
+          alert('Network error while toggling item status.');
+        }
+      });
+    });
+
+    // Delete item with AJAX
+    document.querySelectorAll('.delete-menu-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const id = btn.dataset.id;
+        const name = btn.dataset.name;
+
+        if (!confirm(`Are you sure you want to permanently delete "${name}" from the menu?`)) {
+          return;
+        }
+
+        btn.disabled = true;
+
+        try {
+          const res = await fetch(`/menus/${id}/delete`, {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json',
+            }
+          });
+
+          if (res.ok) {
+            const card = btn.closest('.menu-item-card');
+            if (card) {
+              card.style.opacity = '0';
+              card.style.transform = 'scale(0.95)';
+              setTimeout(() => {
+                card.remove();
+                updateOrderNumbers();
+              }, 250);
+            }
+            showToast(`Deleted "${name}"`);
+          } else {
+            btn.disabled = false;
+            alert('Failed to delete menu item.');
+          }
+        } catch (err) {
+          btn.disabled = false;
+          alert('Network error while deleting item.');
+        }
+      });
+    });
+
+    // Persist Reordering
+    function updateOrderNumbers() {
+      const cards = document.querySelectorAll('.menu-item-card');
+      const orderPayload = [];
+
+      cards.forEach((card, index) => {
+        const badge = card.querySelector('.order-badge');
+        if (badge) badge.textContent = '#' + (index + 1);
+        card.dataset.order = index + 1;
+        orderPayload.push({ id: parseInt(card.dataset.id, 10), order: index + 1 });
+      });
+
+      fetch('/menu/update-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_ids: orderPayload }),
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.success) {
+          showToast('Menu order saved!');
+        }
+      })
+      .catch(() => {});
+    }
+
+    // Up / Down Stepper Handlers
+    document.querySelectorAll('.move-up-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.menu-item-card');
+        const prev = card.previousElementSibling;
+        if (prev && prev.classList.contains('menu-item-card')) {
+          card.parentNode.insertBefore(card, prev);
+          updateOrderNumbers();
+        }
+      });
+    });
+
+    document.querySelectorAll('.move-down-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const card = btn.closest('.menu-item-card');
+        const next = card.nextElementSibling;
+        if (next && next.classList.contains('menu-item-card')) {
+          card.parentNode.insertBefore(next, card);
+          updateOrderNumbers();
+        }
+      });
+    });
+
+    // Drag-and-Drop Reordering
+    let draggedCard = null;
+
+    if (list) {
+      list.querySelectorAll('.menu-item-card').forEach(card => {
+        card.addEventListener('dragstart', (e) => {
+          draggedCard = card;
+          card.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+
+        card.addEventListener('dragend', () => {
+          card.classList.remove('dragging');
+          list.querySelectorAll('.menu-item-card').forEach(c => c.classList.remove('drag-over'));
+          updateOrderNumbers();
+        });
+
+        card.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          const target = e.target.closest('.menu-item-card');
+          if (target && target !== draggedCard) {
+            target.classList.add('drag-over');
+          }
+        });
+
+        card.addEventListener('dragleave', (e) => {
+          const target = e.target.closest('.menu-item-card');
+          if (target) target.classList.remove('drag-over');
+        });
+
+        card.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const target = e.target.closest('.menu-item-card');
+          if (target && target !== draggedCard) {
+            target.classList.remove('drag-over');
+            const allCards = Array.from(list.querySelectorAll('.menu-item-card'));
+            const fromIdx = allCards.indexOf(draggedCard);
+            const toIdx = allCards.indexOf(target);
+
+            if (fromIdx < toIdx) {
+              list.insertBefore(draggedCard, target.nextSibling);
+            } else {
+              list.insertBefore(draggedCard, target);
+            }
+          }
+        });
+      });
+    }
+
+    // Live Search & Multi-Filter Logic
+    const searchInput = document.getElementById('menu-search-input');
+    const categorySelect = document.getElementById('filter-category-select');
+    const filterChips = document.querySelectorAll('.menu-filter-chip');
+    let currentStationFilter = 'all';
+
+    function filterDishes() {
+      const q = (searchInput ? searchInput.value : '').toLowerCase().trim();
+      const selectedCategory = categorySelect ? categorySelect.value : 'all';
+
+      document.querySelectorAll('.menu-item-card').forEach(card => {
+        const name = card.dataset.name || '';
+        const desc = card.dataset.desc || '';
+        const catId = card.dataset.categoryId || '';
+        const isDrink = card.dataset.isDrink === 'true';
+        const isSoldOut = card.dataset.soldOut === 'true';
+
+        // 1. Text Search
+        const matchesSearch = !q || name.includes(q) || desc.includes(q);
+
+        // 2. Category selection
+        const matchesCategory = selectedCategory === 'all' || catId === selectedCategory;
+
+        // 3. Station / Availability chip filter
+        let matchesChip = true;
+        if (currentStationFilter === 'food') {
+          matchesChip = !isDrink;
+        } else if (currentStationFilter === 'drinks') {
+          matchesChip = isDrink;
+        } else if (currentStationFilter === 'soldout') {
+          matchesChip = isSoldOut;
+        } else if (currentStationFilter === 'available') {
+          matchesChip = !isSoldOut;
+        }
+
+        card.style.display = (matchesSearch && matchesCategory && matchesChip) ? 'block' : 'none';
+      });
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('input', filterDishes);
+    }
+    if (categorySelect) {
+      categorySelect.addEventListener('change', filterDishes);
+    }
+
+    filterChips.forEach(chip => {
+      chip.addEventListener('click', () => {
+        filterChips.forEach(c => {
+          c.style.background = '#fff';
+          c.style.color = 'var(--ink-secondary)';
+          c.style.borderColor = 'var(--line)';
+        });
+        chip.style.background = 'var(--brand)';
+        chip.style.color = '#fff';
+        chip.style.borderColor = 'var(--brand)';
+
+        currentStationFilter = chip.dataset.filter;
+        filterDishes();
+      });
+    });
+
+  })();
+</script>

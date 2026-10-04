@@ -43,6 +43,8 @@ const {
 
 const kitchenController = createStationController('kitchen');
 const barController = createStationController('bar');
+const recipeController = require('../controllers/recipeController');
+const profileController = require('../controllers/profileController');
 
 /* ---------------------------------------------------------------------- *
  * Ported from routes/web.php. Only the auth block and the dine-in
@@ -85,6 +87,8 @@ router.post('/store_order', checkoutController.store);
 router.post('/login/store', checkoutController.login);
 
 router.get('/order/:id', customerOrderController.show);
+
+router.all('/tables/:id/reset', restaurantTableController.resetTable);
 
 router.get('/table-qrcode/:id', restaurantTableController.renderPublicQr);
 
@@ -196,7 +200,18 @@ resOwner.use(ensureAuth, requireRestaurantOwner);
 resOwner.get('/dashboard', dashboardController.index);
 resOwner.get('/staff-calls', staffCallController.index);
 resOwner.post('/staff-calls/:id/resolve', staffCallController.resolve);
+resOwner.post('/staff-calls/clear-resolved', staffCallController.clearResolved);
 resOwner.get('/staff-calls/pending-count', staffCallController.countPending);
+
+resOwner.get('/profile', profileController.show);
+resOwner.post(
+  '/profile',
+  uploadImage('images').fields([
+    { name: 'logo', maxCount: 1 },
+    { name: 'image', maxCount: 1 },
+  ]),
+  profileController.update
+);
 
 resOwner.get('/categories', categoryController.index);
 resOwner.get('/categories/create', categoryController.create);
@@ -218,6 +233,8 @@ resOwner.get('/tables/create', restaurantTableController.create);
 resOwner.get('/tables/:id/edit', restaurantTableController.edit);
 resOwner.post('/tables', restaurantTableController.store);
 resOwner.post('/tables/:id/delete', restaurantTableController.destroy);
+resOwner.post('/tables/:id/reset', restaurantTableController.resetTable);
+resOwner.get('/tables/:id/reset', restaurantTableController.resetTable);
 resOwner.get('/tables/:id/qr-data', restaurantTableController.getQrData);
 resOwner.get('/tables/:id/qr-download', restaurantTableController.downloadQr);
 
@@ -265,6 +282,11 @@ resOwner.get('/inventory/:id/stock-out', inventoryController.showStockOutForm);
 resOwner.post('/inventory/:id/stock-out', inventoryController.stockOut);
 resOwner.get('/inventory/:id/history', inventoryController.history);
 resOwner.get('/inventory-report', inventoryReportController.index);
+
+resOwner.get('/recipes', recipeController.index);
+resOwner.get('/recipes/:itemId/edit', recipeController.edit);
+resOwner.post('/recipes/:itemId', recipeController.store);
+resOwner.post('/recipes/item/:id/delete', recipeController.destroyIngredient);
 
 resOwner.get('/order-report', onlineOrderReportController.index);
 resOwner.get('/order-report/view/:id', onlineOrderReportController.view);

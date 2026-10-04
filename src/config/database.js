@@ -17,7 +17,7 @@ if (isMysqlConfigured) {
     process.env.DB_PASSWORD || '',
     {
       host: process.env.DB_HOST,
-      port: process.env.DB_PORT || 3306,
+      port: process.env.DB_PORT || 3308,
       dialect: 'mysql',
       logging: process.env.NODE_ENV === 'development' ? console.log : false,
       define: {

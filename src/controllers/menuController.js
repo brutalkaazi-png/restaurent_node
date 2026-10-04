@@ -15,10 +15,24 @@ async function index(req, res) {
   const where = { user_id: req.tenantId, branch_id: req.branchId };
   if (req.query.category_id) where.item_category = req.query.category_id;
 
-  const menus = await Item.findAll({ where, order: [['item_order', 'ASC']] });
+  // Eager load category, variants, and toppings for rich dish card display
+  const menus = await Item.findAll({
+    where,
+    include: [
+      { association: 'category' },
+      { association: 'variants' },
+      { association: 'toppings' },
+    ],
+    order: [['item_order', 'ASC']],
+  });
   const setting = await getSettings();
 
-  return res.render('res/menu/index', { menus, setting, categories, selectedCategoryId: req.query.category_id || '' });
+  return res.render('res/menu/index', {
+    menus,
+    setting,
+    categories,
+    selectedCategoryId: req.query.category_id || '',
+  });
 }
 
 // GET /menus/create
@@ -36,7 +50,8 @@ async function edit(req, res) {
     where: { user_id: req.tenantId, branch_id: req.branchId },
     order: [['category_order', 'ASC']],
   });
-  const menu = await Item.findOne({ where: { id: req.params.id, user_id: req.tenantId, branch_id: req.branchId },
+  const menu = await Item.findOne({
+    where: { id: req.params.id, user_id: req.tenantId, branch_id: req.branchId },
     include: [{ association: 'variants' }, { association: 'toppings' }],
   });
   if (!menu) return res.status(404).send('Menu item not found');
@@ -56,7 +71,11 @@ async function store(req, res) {
     const rawSlug = req.body.item_slug || req.body.item_name;
     let slug = sanitizeString(rawSlug);
     const existingSlugs = (
-      await Item.findAll({ where: { user_id: req.tenantId, branch_id: req.branchId, item_slug: { [Op.like]: `%${slug}%` } }, attributes: ['item_slug'], transaction: t })
+      await Item.findAll({
+        where: { user_id: req.tenantId, branch_id: req.branchId, item_slug: { [Op.like]: `%${slug}%` } },
+        attributes: ['item_slug'],
+        transaction: t,
+      })
     ).map((i) => i.item_slug);
 
     if (slug !== menu.item_slug) {
@@ -109,30 +128,61 @@ async function store(req, res) {
     return res.redirect('/menus');
   } catch (e) {
     await t.rollback();
-    // eslint-disable-next-line no-console
     console.error('Menu save failed:', e.message);
     return res.status(500).render('res/menu/create', { categories: [], menu: null, error: `Something went wrong: ${e.message}` });
   }
 }
 
-// POST /menus/:id/delete
+// POST /menus/:id/delete (supports AJAX & traditional form post)
 async function destroy(req, res) {
-  const menu = await Item.findOne({ where: { id: req.params.id, user_id: req.tenantId, branch_id: req.branchId } });
-  if (menu) await menu.destroy();
-  return res.redirect('/menus');
+  try {
+    const menu = await Item.findOne({ where: { id: req.params.id, user_id: req.tenantId, branch_id: req.branchId } });
+    if (menu) {
+      await ItemVariant.destroy({ where: { item_id: menu.id } });
+      await Topping.destroy({ where: { item_id: menu.id } });
+      await menu.destroy();
+      notifyRestaurant(req.currentUser.id, { reason: 'menu-update' });
+    }
+
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.json({ success: true });
+    }
+    return res.redirect('/menus');
+  } catch (error) {
+    console.error('Menu delete error:', error);
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.status(500).json({ success: false, message: 'Could not delete menu item.' });
+    }
+    return res.redirect('/menus');
+  }
 }
 
-// POST /menus/:id/toggle-sold-out
+// POST /menus/:id/toggle-sold-out (supports AJAX & traditional form post)
 async function toggleSoldOut(req, res) {
-  const menu = await Item.findOne({ where: { id: req.params.id, user_id: req.tenantId, branch_id: req.branchId } });
-  if (!menu) return res.status(404).json({ success: false, message: 'Menu item not found.' });
+  try {
+    const menu = await Item.findOne({ where: { id: req.params.id, user_id: req.tenantId, branch_id: req.branchId } });
+    if (!menu) {
+      if (req.xhr || req.headers.accept?.includes('application/json')) {
+        return res.status(404).json({ success: false, message: 'Menu item not found.' });
+      }
+      return res.redirect('/menus');
+    }
 
-  menu.sold_out = !menu.sold_out;
-  await menu.save();
-  notifyRestaurant(req.currentUser.id, { reason: 'menu-update' });
+    menu.sold_out = !menu.sold_out;
+    await menu.save();
+    notifyRestaurant(req.currentUser.id, { reason: 'menu-update' });
 
-  if (req.accepts('html')) return res.redirect('/menus');
-  return res.json({ success: true, sold_out: menu.sold_out });
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.json({ success: true, sold_out: menu.sold_out, id: menu.id });
+    }
+    return res.redirect('/menus');
+  } catch (error) {
+    console.error('Menu toggle sold out error:', error);
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.status(500).json({ success: false, message: 'Could not update availability.' });
+    }
+    return res.redirect('/menus');
+  }
 }
 
 // POST /menu/update-order  { order_ids: [{id, order}, ...] }
@@ -144,10 +194,5 @@ async function storeOrder(req, res) {
   }
   return res.json({ success: false });
 }
-
-// NOTE: qr_code()/generate_qrcode() from the original (uses App\Helpers\QRHelper,
-// which isn't ported) are intentionally left out - add a QR-code npm
-// package (e.g. `qrcode`) and wire up /qrcode/:id and /generate-qrcode
-// here if you need that back.
 
 module.exports = { index, create, edit, store, destroy, toggleSoldOut, storeOrder };

@@ -1,55 +1,99 @@
-<div class="card" style="border:1.5px solid var(--brand-border);box-shadow:var(--shadow-md);">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:12px;">
+<%
+let ticketSubtotal = 0;
+groupedOrders.forEach(g => {
+  ticketSubtotal += (g.quantity * parseFloat(g.price || 0));
+});
+%>
+
+<div class="card" style="margin:0;border:1.5px solid var(--brand-border);box-shadow:var(--shadow-md);">
+  <!-- PANEL HEADER -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:14px;">
     <div>
-      <h3 style="margin:0;font-size:18px;">Active Orders for Table #<%= id %></h3>
-      <span style="font-size:12.5px;color:var(--muted);">Review live kitchen progress and guest tickets</span>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+        <span class="badge" style="background:#fef3c7;color:#b45309;font-weight:800;">Table #<%= id %></span>
+        <span style="font-size:12px;color:var(--muted);"><%= groupedOrders.length %> items</span>
+      </div>
+      <h3 style="margin:0;font-size:18px;color:var(--ink);">Active Orders & Ticket</h3>
     </div>
-    <span class="badge status-occupied">● Active Session</span>
+    
+    <button type="button" id="close-inspector-mobile" class="menu-toggle" style="display:none;font-size:22px;border:none;background:none;cursor:pointer;" aria-label="Close inspector">&times;</button>
   </div>
 
+  <!-- ITEMS LIST -->
   <% if (!groupedOrders.length) { %>
-    <p style="color:var(--muted);text-align:center;padding:24px 0;">No active items currently on order for this table.</p>
+    <div style="text-align:center;padding:36px 0;color:var(--muted);">
+      <p style="margin:0;">No active items currently on ticket for Table #<%= id %>.</p>
+    </div>
+  <% } else { %>
+    <div style="display:grid;gap:8px;max-height:48vh;overflow-y:auto;padding-right:4px;">
+      <% groupedOrders.forEach(function(g) { %>
+        <%
+          const lineTotal = g.quantity * parseFloat(g.price || 0);
+          const isDelivered = g.status === 'order_delivered';
+          const isPrep = g.status === 'preparing';
+        %>
+        <div class="item-row" style="background:#f8fafc;padding:12px 14px;border-radius:8px;border:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <strong style="font-size:15px;color:var(--ink);"><%= g.item ? g.item.item_name : 'Item' %></strong>
+              <span class="badge" style="background:#334155;color:#fff;font-size:11.5px;font-weight:800;padding:2px 7px;">x<%= g.quantity %></span>
+              <% if (g.variant) { %>
+                <span style="font-size:12px;color:var(--muted);">(<%= g.variant.name %>)</span>
+              <% } %>
+            </div>
+
+            <% if (g.toppings && g.toppings.length) { %>
+              <div style="font-size:11.5px;color:var(--muted);margin-top:2px;">
+                + <%= g.toppings.map(t => t.name).join(', ') %>
+              </div>
+            <% } %>
+
+            <% if (g.remarks) { %>
+              <div style="font-size:12px;color:#d97706;margin-top:3px;background:#fffbeb;padding:2px 6px;border-radius:4px;display:inline-block;">
+                Note: "<%= g.remarks %>"
+              </div>
+            <% } %>
+
+            <div style="font-size:12.5px;font-weight:700;color:var(--ink);margin-top:4px;">
+              $<%= lineTotal.toFixed(2) %>
+            </div>
+          </div>
+
+          <!-- ACTIONS -->
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            <span class="badge <%= isDelivered ? 'status-available' : (isPrep ? 'status-occupied' : '') %>" style="font-size:11px;text-transform:capitalize;">
+              <%= g.status.replaceAll('_', ' ') %>
+            </span>
+
+            <% if (!isDelivered) { %>
+              <button type="button" class="btn btn-secondary update-order-btn" data-ids="<%= g.sub_order_ids %>" data-status="order_delivered" style="padding:4px 8px;font-size:11.5px;font-weight:700;background:#dcfce7;color:#15803d;border-color:#bbf7d0;">
+                ✓ Served
+              </button>
+            <% } %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+
+    <!-- TICKET ESTIMATED TOTAL -->
+    <div style="display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 14px;border-top:1px dashed var(--line);margin-top:12px;">
+      <span style="font-size:13px;text-transform:uppercase;color:var(--muted);font-weight:700;">Subtotal</span>
+      <strong style="font-size:20px;color:var(--brand);">$<%= ticketSubtotal.toFixed(2) %></strong>
+    </div>
   <% } %>
 
-  <div style="display:grid;gap:8px;">
-    <% groupedOrders.forEach(function(g) { %>
-      <div class="item-row" style="background:#f8fafc;padding:12px 14px;border-radius:8px;border:1px solid var(--line);">
-        <div>
-          <strong style="font-size:15px;color:var(--ink);"><%= g.item ? g.item.item_name : 'Item' %></strong>
-          <span class="badge" style="margin-left:6px;font-size:12px;">x<%= g.quantity %></span>
-          <% if (g.variant) { %><span style="font-size:12.5px;color:var(--muted);margin-left:4px;">(<%= g.variant.name %>)</span><% } %>
-          <% if (g.remarks) { %><div style="font-size:12.5px;color:#d97706;margin-top:2px;">Note: <%= g.remarks %></div><% } %>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span class="badge status-available" style="text-transform:capitalize;"><%= g.status.replaceAll('_', ' ') %></span>
-          <% if (g.status !== 'order_delivered') { %>
-            <button type="button" class="btn btn-secondary update-order-btn" data-ids="<%= g.sub_order_ids %>" data-status="order_delivered" style="padding:6px 12px;font-size:12px;">Mark delivered</button>
-          <% } %>
-        </div>
-      </div>
-    <% }) %>
-  </div>
+  <!-- BOTTOM CHECKOUT ACTIONS -->
+  <div style="display:grid;gap:8px;border-top:1px solid var(--line);padding-top:14px;">
+    <% if (groupedOrders.length) { %>
+      <a class="btn" href="/counter-admin/make_bill/<%= id %>" style="width:100%;text-align:center;padding:11px;font-size:14.5px;font-weight:700;box-shadow:var(--shadow-brand);">
+        💰 Prepare Bill & Settle ↗
+      </a>
+    <% } %>
 
-  <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;">
-    <button type="button" class="btn btn-secondary" id="cancel-table-btn" data-table-id="<%= id %>">Void / Cancel Table</button>
-    <a class="btn" href="/counter-admin/make_bill/<%= id %>" target="_blank">Prepare Guest Bill ↗</a>
+    <div style="display:flex;gap:6px;">
+      <button type="button" class="btn btn-secondary" id="cancel-table-btn" data-table-id="<%= id %>" style="flex:1;font-size:12px;color:#be123c;border-color:#fecdd3;background:#fff1f2;">
+        Void / Reset Table
+      </button>
+    </div>
   </div>
 </div>
-
-<script>
-  document.querySelectorAll('.update-order-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      fetch('/counter-admin/update-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: btn.dataset.ids, status: btn.dataset.status }),
-      }).then(() => location.reload());
-    });
-  });
-  const cancelBtn = document.getElementById('cancel-table-btn');
-  if (cancelBtn) {
-    cancelBtn.addEventListener('click', () => {
-      fetch(`/counter-admin/cancel_order/${cancelBtn.dataset.tableId}`).then(() => location.reload());
-    });
-  }
-</script>

@@ -8,18 +8,45 @@
   <link rel="stylesheet" href="/css/modern.css">
 </head>
 <body>
-  <% const pathName = typeof currentPath !== 'undefined' ? currentPath : ''; const isOwner = currentUser && currentUser.user_type === 'R'; const isSuperAdmin = currentUser && currentUser.user_type === 'S'; const isKitchen = currentUser && currentUser.user_type === 'K'; const isCounter = currentUser && currentUser.user_type === 'Co'; const initials = currentUser && currentUser.name ? currentUser.name.split(/\s+/).map(part => part[0]).slice(0,2).join('').toUpperCase() : 'T'; %>
-  <% if (currentUser) { %>
+<% const pathName = typeof currentPath !== 'undefined' ? currentPath : ''; const isOwner = currentUser && currentUser.user_type === 'R'; const isSuperAdmin = currentUser && currentUser.user_type === 'S'; const isKitchen = currentUser && currentUser.user_type === 'K'; const isCounter = currentUser && currentUser.user_type === 'Co'; const initials = currentUser && currentUser.name ? currentUser.name.split(/\s+/).map(part => part[0]).slice(0,2).join('').toUpperCase() : 'T'; const userSlug = (currentUser && currentUser.slug) ? currentUser.slug : 'demo-restaurant'; %>  <% if (currentUser) { %>
   <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
-  <div class="app-shell"><aside class="sidebar" id="sidebar"><a class="brand" href="<%= isSuperAdmin ? '/superadmin/dashboard' : isOwner ? '/dashboard' : isKitchen ? '/kitchen-admin/kitchen' : isCounter ? '/counter-admin/' + currentUser.slug + '/counter' : '/home' %>"><span class="brand-mark">✦</span><span class="brand-name">Tablely</span></a><div class="workspace-label"><%= isSuperAdmin ? 'Platform workspace' : isOwner ? 'Restaurant workspace' : isKitchen ? 'Kitchen workspace' : 'Counter workspace' %></div><nav class="side-nav" aria-label="Main navigation">
+  <div class="app-shell"><aside class="sidebar" id="sidebar"><a class="brand" href="<%= isSuperAdmin ? '/superadmin/dashboard' : isOwner ? '/dashboard' : isKitchen ? '/kitchen-admin/kitchen' : isCounter ? '/counter-admin/' + userSlug + '/counter' : '/home' %>"><span class="brand-mark">✦</span><span class="brand-name">Tablely</span></a><div class="workspace-label"><%= isSuperAdmin ? 'Platform workspace' : isOwner ? 'Restaurant workspace' : isKitchen ? 'Kitchen workspace' : 'Counter workspace' %></div><nav class="side-nav" aria-label="Main navigation">
     <% if (isOwner) { %>
-    <a class="<%= pathName === '/dashboard' ? 'active' : '' %>" href="/dashboard"><span class="nav-icon">⌂</span>Overview</a><a class="<%= pathName.startsWith('/categories') ? 'active' : '' %>" href="/categories"><span class="nav-icon">◫</span>Categories</a><a class="<%= pathName.startsWith('/menus') ? 'active' : '' %>" href="/menus"><span class="nav-icon">☷</span>Menu items</a><a class="<%= pathName.startsWith('/tables') ? 'active' : '' %>" href="/tables"><span class="nav-icon">▦</span>Tables</a><a class="<%= pathName.startsWith('/waiters') ? 'active' : '' %>" href="/waiters"><span class="nav-icon">♙</span>Team</a><div class="nav-separator"></div><a class="<%= pathName.startsWith('/discounts') || pathName.startsWith('/promotions') ? 'active' : '' %>" href="/promotions"><span class="nav-icon">✧</span>Promotions</a><a class="<%= pathName.startsWith('/inventory') ? 'active' : '' %>" href="/inventory"><span class="nav-icon">◈</span>Inventory</a><a class="<%= pathName.startsWith('/order-summary') || pathName.startsWith('/order-report') || pathName.startsWith('/table-order') ? 'active' : '' %>" href="/order-summary"><span class="nav-icon">▤</span>Reports</a><div class="nav-separator"></div><a href="/counter-admin/<%= currentUser.slug %>/counter"><span class="nav-icon">▣</span>Counter</a><a href="/kitchen-admin/kitchen"><span class="nav-icon">♨</span>Kitchen board</a>
+    <a class="<%= pathName === '/dashboard' ? 'active' : '' %>" href="/dashboard"><span class="nav-icon">⌂</span>Overview</a><a class="<%= pathName.startsWith('/categories') ? 'active' : '' %>" href="/categories"><span class="nav-icon">◫</span>Categories</a><a class="<%= pathName.startsWith('/menus') ? 'active' : '' %>" href="/menus"><span class="nav-icon">☷</span>Menu items</a>
+    <a class="<%= pathName === '/profile' ? 'active' : '' %>" href="/profile"><span class="nav-icon">⚙</span>Store Profile</a><a class="<%= pathName.startsWith('/waiters') ? 'active' : '' %>" href="/waiters"><span class="nav-icon">♙</span>Team</a><div class="nav-separator"></div><a class="<%= pathName.startsWith('/discounts') || pathName.startsWith('/promotions') ? 'active' : '' %>" href="/promotions"><span class="nav-icon">✧</span>Promotions</a>
+    <a class="<%= pathName.startsWith('/recipes') ? 'active' : '' %>" href="/recipes"><span class="nav-icon">🧾</span>Recipes / BOM</a>
+    <a class="<%= pathName.startsWith('/order-summary') || pathName.startsWith('/order-report') || pathName.startsWith('/table-order') ? 'active' : '' %>" href="/order-summary"><span class="nav-icon">▤</span>Reports</a><div class="nav-separator"></div><a href="/counter-admin/<%= userSlug %>/counter"><span class="nav-icon">▣</span>Counter</a><a href="/kitchen-admin/kitchen"><span class="nav-icon">♨</span>Kitchen board</a>
     <a class="<%= pathName.startsWith('/staff-calls') ? 'active' : '' %>" href="/staff-calls"><span class="nav-icon">♧</span>Staff calls</a>
     <% } else if (isSuperAdmin) { %>
-    <a class="<%= pathName === '/superadmin/dashboard' ? 'active' : '' %>" href="/superadmin/dashboard"><span class="nav-icon">⌂</span>Overview</a><a class="<%= pathName.startsWith('/superadmin/restaurants') ? 'active' : '' %>" href="/superadmin/restaurants"><span class="nav-icon">◫</span>Restaurants</a><a class="<%= pathName.startsWith('/superadmin/subscriptions') ? 'active' : '' %>" href="/superadmin/subscriptions"><span class="nav-icon">◇</span>Subscriptions</a><a class="<%= pathName.startsWith('/superadmin/setting') ? 'active' : '' %>" href="/superadmin/setting"><span class="nav-icon">⚙</span>Settings</a>
+    <a class="<%= pathName === '/superadmin/dashboard' ? 'active' : '' %>" href="/superadmin/dashboard">
+      <span class="nav-icon">⌂</span>Dashboard
+    </a>
+    <a class="<%= pathName.startsWith('/superadmin/restaurants') ? 'active' : '' %>" href="/superadmin/restaurants">
+      <span class="nav-icon">◫</span>Restaurants & Stores
+    </a>
+    <a class="<%= pathName.startsWith('/superadmin/subscriptions') ? 'active' : '' %>" href="/superadmin/subscriptions">
+      <span class="nav-icon">◇</span>Subscription Plans
+    </a>
+    <a class="<%= pathName.startsWith('/superadmin/setting') ? 'active' : '' %>" href="/superadmin/setting">
+      <span class="nav-icon">⚙</span>System Settings
+    </a>
+    <div class="nav-separator"></div>
+    <a href="/dashboard" target="_blank" rel="noopener">
+      <span class="nav-icon">↗</span>Demo Restaurant
+    </a>
     <% } else if (isKitchen) { %><a class="<%= pathName === '/kitchen-admin/kitchen' ? 'active' : '' %>" href="/kitchen-admin/kitchen"><span class="nav-icon">♨</span>Kitchen board</a><a class="<%= pathName === '/kitchen-admin/bar' ? 'active' : '' %>" href="/kitchen-admin/bar"><span class="nav-icon">◒</span>Bar board</a>
-    <% } else if (isCounter) { %><a class="active" href="/counter-admin/<%= currentUser.slug %>/counter"><span class="nav-icon">▣</span>Counter</a><% } %>
-  </nav><div class="sidebar-user"><span class="avatar"><%= initials %></span><div class="user-copy"><strong><%= currentUser.name %></strong><span><%= isSuperAdmin ? 'Administrator' : isOwner ? 'Restaurant owner' : isKitchen ? 'Kitchen staff' : 'Counter staff' %></span></div><a class="signout" href="/logout" aria-label="Sign out">↗</a></div></aside>
+    <% } else if (isCounter) { %><a class="active" href="/counter-admin/<%= userSlug %>/counter"><span class="nav-icon">▣</span>Counter</a><% } %>
+  </nav><!-- STICKY SIDEBAR USER PROFILE CARD -->
+<div class="sidebar-user">
+  <a href="<%= isOwner ? '/profile' : '#' %>" style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;text-decoration:none;" title="Edit Restaurant Profile">
+    <span class="avatar" style="transition:transform 0.15s ease;"><%= initials %></span>
+    <div class="user-copy">
+      <strong><%= currentUser.name %></strong>
+      <span><%= isSuperAdmin ? 'Administrator' : isOwner ? 'Restaurant owner' : isKitchen ? 'Kitchen staff' : 'Counter staff' %></span>
+    </div>
+  </a>
+  <a class="signout" href="/logout" title="Sign out" aria-label="Sign out">↗</a>
+</div></aside>
   <main class="app-main"><header class="topbar"><div class="topbar-copy"><button class="menu-toggle" type="button" aria-label="Open navigation" aria-controls="sidebar">☰</button><div><h1><%= typeof title !== 'undefined' ? title : 'Workspace' %></h1><p><%= new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}) %></p></div></div><div class="topbar-actions"><a class="header-link" href="<%= isOwner ? '/dashboard' : isSuperAdmin ? '/superadmin/dashboard' : '/home' %>">Workspace</a><span class="avatar"><%= initials %></span></div></header><section class="content"><%- body %></section><footer class="app-footer"><span>© <%= new Date().getFullYear() %> Tablely. Built for better service.</span><span>Restaurant operations, simplified.</span></footer></main></div>
   <% } else { %>
   <div class="public-shell"><header class="public-header"><a class="brand" href="/"><span class="brand-mark">✦</span><span class="brand-name">Tablely</span></a><div class="public-nav"><a class="header-link" href="/demo-restaurant/menu">Menu</a><a class="btn btn-sm" href="/login">Sign in</a></div></header><main class="public-content"><%- body %></main><footer class="public-footer"><span>© <%= new Date().getFullYear() %> Tablely · Thoughtful dining, served simply.</span></footer></div>
